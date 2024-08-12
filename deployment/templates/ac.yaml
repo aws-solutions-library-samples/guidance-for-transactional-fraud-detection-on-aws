@@ -1,0 +1,103 @@
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  ApplicationIdentifier:
+    Description: Specify ARN of AthenaNeptuneConnector Serverless Application. In context of AWS Account and AWS Region, it should be arn:aws:serverlessrepo:<AWS-Region>:<AWS-AccountId>:applications/AthenaNeptuneConnector. Replace values for <AWS-Region> and <AWS-AccountId> to specify the correct ARN.
+    Type: String
+    Default: 'arn:aws:serverlessrepo:us-east-1:292517598671:applications/AthenaNeptuneConnector'
+  SemanticVersion:
+    Description: AthenaNeptuneConnector Serverless Application Semantic Version
+    Type: String
+    Default: '2023.37.2'
+  NeptuneClusterEndpoint:
+    Description: The Neptune cluster endpoint
+    Type: String
+  NeptunePort: 
+    Description: The Neptune port
+    Type: String
+    Default: '8182'
+  NeptuneClusterResourceID:
+    Description: To find the Neptune cluster resource ID in the Amazon Neptune AWS Management Console, choose the DB cluster that you want. The Resource ID is shown in the Configuration section.
+    Type: String
+  S3Bucket:
+    Description: The name of the bucket where this function can spill data.
+    Type: String
+  SecurityGroupIds:
+    Description: One or more SecurityGroup IDs corresponding to the SecurityGroup(s) that should be applied to the Lambda function to allow connectivity to Neptune cluster. (e.g. sg1,sg2,sg3)
+    Type: String
+  SubnetIds:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda function can use to access the Neptune cluster. (e.g. subnet1,subnet2)
+    Type: String
+  IAMEnabled:
+    Description: If set to 'true' the connector uses Signature Version 4 Signing
+    Type: String
+    Default: 'false'
+Resources:
+  AthenaNeptuneConnector:
+  # Athena Neptune Connector
+    Type: AWS::Serverless::Application
+    DependsOn:
+      - gluedatabase
+    Properties:
+       Location:
+         ApplicationId: !Ref ApplicationIdentifier
+         SemanticVersion: !Ref SemanticVersion
+       Parameters:
+         NeptuneClusterEndpoint: 
+            Ref: NeptuneClusterEndpoint
+         NeptunePort: 
+            Ref: NeptunePort
+         NeptuneClusterResourceID: 
+            Ref: NeptuneClusterResourceID
+         GlueDatabaseName: 
+            Fn::GetAtt:
+            - gluedatabase
+            - Outputs.GlueDatabaseName
+         AthenaCatalogName:
+            'Fn::Transform':
+            - Name: 'String'
+              Parameters:
+                InputString: !Sub '${AWS::StackName}-ac'
+                Operation: Lower 
+         SpillBucket: 
+            Ref: S3Bucket
+         SecurityGroupIds: 
+            Ref: SecurityGroupIds
+         SubnetIds: 
+            Ref: SubnetIds
+         IAMEnabled:
+            Ref: IAMEnabled
+
+  AthenaWorkgroup:
+    Type: AWS::Athena::WorkGroup
+    Properties:
+      Name: !Sub 'athenav2-${AWS::StackName}'
+      WorkGroupConfiguration:
+        EngineVersion:
+          EffectiveEngineVersion: Athena engine version 2
+          SelectedEngineVersion: Athena engine version 2
+
+  AthenaDataCatalog:
+    Type: AWS::Athena::DataCatalog
+    DependsOn:
+      - AthenaNeptuneConnector
+    Properties:
+      Name: !Sub 'v2-${AWS::StackName}'
+      Type: LAMBDA
+      Parameters:
+        function: 
+          'Fn::Transform':
+          - Name: 'String'
+            Parameters:
+              InputString: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-ac'
+              Operation: Lower 
+  gluedatabase:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://s3.amazonaws.com/${S3Bucket}/templates/glue.yaml'
+      TimeoutInMinutes: 60
+      Parameters:
+        DataBucketName: !Sub '${S3Bucket}'
+Outputs:
+  AthenaDataCatalog:
+    Description: AthenaNeptuneConnector Data Catalog
+    Value: !Ref AthenaDataCatalog

@@ -1,0 +1,24 @@
+{
+    "events" :
+    [
+      {
+      "event" :  "weather",
+        "dimensions" : [
+          {"name": "city", "type": "VARCHAR"}
+        ],
+        "measures" : [
+          {"name": "wind-direction", "type": "VARCHAR"},
+          {"name": "visibility", "type": "BIGINT"},
+          {"name": "wind_Speed", "type": "BIGINT"},
+          {"name": "temperature", "type": "BIGINT"},
+          {"name": "humidity", "type": "BIGINT"},
+          {"name": "weather_status", "type": "BIGINT"},
+          {"name": "pressure", "type": "BIGINT"}
+        ],
+        "mappings": [
+          {"source" : "metTower", "target" :  "city"},
+          {"source" : "temperature", "target" :  "temperature"}
+        ]
+      }
+    ]
+}

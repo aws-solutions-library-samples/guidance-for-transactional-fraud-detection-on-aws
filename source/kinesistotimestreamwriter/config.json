@@ -1,0 +1,59 @@
+{
+  "events" :
+  [
+    {
+      "event" :  "weather",
+      "dimensions" : [
+        {"name": "city", "type": "VARCHAR"}
+      ],
+      "measures" : [
+        {"name": "wind-direction", "type": "VARCHAR"},
+        {"name": "visibility", "type": "BIGINT"},
+        {"name": "wind_Speed", "type": "BIGINT"},
+        {"name": "temperature", "type": "BIGINT"},
+        {"name": "humidity", "type": "BIGINT"},
+        {"name": "weather_status", "type": "BIGINT"},
+        {"name": "pressure", "type": "BIGINT"}
+      ],
+      "mappings": [
+        {"source" : "metTower", "target" :  "city"},
+        {"source" : "temp_f", "target" :  "temperature"},
+        {"source" : "wind.direction", "target" :  "wind-direction"},
+        {"source" : "wind.visibility", "target" :  "visibility"},
+        {"source" : "wind.speed", "target" :  "wind_Speed"}
+      ]
+    },
+    {
+      "event" :  "utilization",
+      "dimensions" : [
+        {"name": "region", "type": "VARCHAR"},
+        {"name": "host", "type": "VARCHAR"}
+      ],
+      "measures" : [
+        {"name": "cpu", "type": "BIGINT"},
+        {"name": "visibility", "type": "BIGINT"},
+        {"name": "network", "type": "BIGINT"},
+        {"name": "memory", "type": "BIGINT"}
+      ],
+      "mappings": [
+        {"source" : "host-name","target" : "host"},
+        {"source" : "reg", "target" :  "region"}
+      ]
+    },
+    {
+      "event": "transaction",
+      "dimensions" : [
+        {"name": "account_num", "type": "VARCHAR"},
+        {"name": "merchant_num", "type": "VARCHAR"}
+      ],
+      "measures" : [
+        {"name": "value", "type": "DOUBLE"}
+      ],
+      "mappings": [
+        {"source" : "account","target" : "account_num"},
+        {"source" : "merchant", "target" :  "merchant_num"},
+        {"source":  "transaction_amount", "target": "value"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+ # Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ #
+ # Permission is hereby granted, free of charge, to any person obtaining a copy of this
+ # software and associated documentation files (the "Software"), to deal in the Software
+ # without restriction, including without limitation the rights to use, copy, modify,
+ # merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ # permit persons to whom the Software is furnished to do so.
+ #
+ # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ # INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+ # PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  This template sets up sample AWS Glue resources to be orchestrated by AWS Step Functions.
+Parameters:
+  DataBucketName:
+    Type: String
+    MinLength: "1"
+    Description: "Name of the S3 bucket in which the source data is there"
+Resources:
+  ### AWS GLUE RESOURCES ###
+  GraphExternalDB:
+    Type: "AWS::Glue::Database"
+    Properties:
+      DatabaseInput:
+        Description: "Marketing and Sales database (Amazon QuickSight Samples)."
+        Name: 
+          'Fn::Transform':
+          - Name: 'String'
+            Parameters:
+              InputString: !Sub '${AWS::StackName}-graph-external-db'
+              Operation: Lower
+        # !Sub 'graph-external-db-${AWS::StackName}' 
+      CatalogId: !Ref AWS::AccountId
+
+  SharedAccountsTable:
+    Type: "AWS::Glue::Table"
+    DependsOn: GraphExternalDB
+    Properties:
+      TableInput:
+        Description: "Table to show linked accounts"
+        TableType: "EXTERNAL_TABLE"
+        Parameters: {
+                "classification": "csv",
+                "componenttype": "view",
+                "query": "g.V().hasLabel('account').as('s').emit().repeat(bothE('hasemail','hasphone').otherV().simplePath()).times(2).hasLabel('account').as('t').project('sourceaccount','linkedaccount').by(select('s').id()).by(select('t').id()).dedup().order().by('sourceaccount')",
+        }
+        StorageDescriptor:
+          StoredAsSubDirectories: False
+          Parameters: {
+                  "delimiter": ","
+          }
+          InputFormat: "org.apache.hadoop.mapred.TextInputFormat"
+          OutputFormat: "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+          Columns:
+            - Type: string
+              Name: sourceaccount
+            - Type: string
+              Name: linkedaccount
+          SerdeInfo:
+            SerializationLibrary: "org.apache.hadoop.hive.serde2.OpenCSVSerde"
+          Compressed: False
+          Location: !Sub "s3://${DataBucketName}/"
+        Retention: 0
+        Name: 'sharedaccounts'
+      DatabaseName: !Ref GraphExternalDB
+      CatalogId: !Ref AWS::AccountId
+Outputs:
+    GlueDatabaseName:
+      Description: Glue Database Name
+      Value: 
+        'Fn::Transform':
+          - Name: 'String'
+            Parameters:
+              InputString: !Sub '${AWS::StackName}-graph-external-db'
+              Operation: Lower

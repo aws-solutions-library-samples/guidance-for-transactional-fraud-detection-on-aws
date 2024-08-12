@@ -1,0 +1,207 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Base template for Solution Guidance (Transaction fraud)
+Globals:
+  Function:
+    Timeout: 20
+    MemorySize: 128
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - 
+        Label: 
+          default: "Mandatory Parameters"
+        Parameters: 
+          - VPCId
+          - SubnetId1
+          - SubnetId2
+          - SubnetId3
+          - S3Bucket
+      # - 
+      #   Label: 
+      #     default: "Optional Parameters"
+      #   Parameters: 
+          # - Env
+          # - DbInstanceType
+          # - MinNCUs
+          # - MaxNCUs
+          # - DBReplicaIdentifierSuffix
+          # - DBClusterId
+          # - DBClusterPort
+          # - NeptuneQueryTimeout
+          # - NeptuneEnableAuditLog
+          # - EnableIamAuthOnNeptune
+          # - NotebookInstanceType
+Parameters:
+  VPCId:
+      Description: VPC ID
+      Type: String
+  SubnetId1:
+      Description: Subnet where Neptune will be created. Same subnet will be used for AWS Lambda VPC Configuration
+      Type: String
+  SubnetId2:
+    Description: Subnet where Neptune will be created. Same subnet will be used for AWS Lambda VPC Configuration
+    Type: String
+  SubnetId3:
+    Description: Subnet where Neptune will be created. Same subnet will be used for AWS Lambda VPC Configuration
+    Type: String
+  S3Bucket:
+    Type: String
+    Description: Bucket where build assets are kept
+  # DbInstanceType:
+  #   Description: Neptune DB instance type
+  #   Type: String
+  #   Default: db.serverless
+  #   AllowedValues:
+  #   - db.serverless
+  #   - db.t3.medium
+  #   - db.r6g.large
+  #   - db.r6g.xlarge
+  #   - db.r6g.2xlarge
+  #   - db.r6g.4xlarge
+  #   - db.r6g.8xlarge
+  #   - db.r5.large
+  #   - db.r5.xlarge
+  #   - db.r5.2xlarge
+  #   - db.r5.4xlarge
+  #   - db.r5.8xlarge
+  #   - db.r5.12xlarge
+  #   ConstraintDescription: Must be a valid Neptune instance type. Note that for Stockholm and OSU only R5 and T3 instances are available.
+  # MinNCUs:
+  #   Description: Min NCUs to be set on the Neptune cluster(Should be less than or
+  #     equal to MaxNCUs). Required if DBInstance type is db.serverless
+  #   Default: 2.5
+  #   Type: Number
+  #   MinValue: 1
+  #   MaxValue: 128
+  #   ConstraintDescription: Must be a valid value between 1 and 128.
+  # MaxNCUs:
+  #   Description: Max NCUs to be set on the Neptune cluster(Should be greater than or equal to MinNCUs). Required if DBInstance type is db.serverless
+  #   Default: 128
+  #   Type: Number
+  #   MinValue: 1
+  #   MaxValue: 128
+  #   ConstraintDescription: Must be a valid value between 1 and 128.
+  # DBReplicaIdentifierSuffix:
+  #   Description: 'OPTIONAL: The ID for the Neptune Replica to use. Empty means no
+  #     read replica.'
+  #   Type: String
+  #   Default: ''
+  # DBClusterId:
+  #   Description: 'OPTIONAL: Enter the Cluster id of your Neptune cluster. This is
+  #     used for NotebookInstanceName (which has 63 char limit) thus MaxLength constraint
+  #     of 38 characters is used.'
+  #   Type: String
+  #   AllowedPattern: "^[a-zA-Z]{0}(?:-?[a-zA-Z0-9]){0,37}$"
+  #   MaxLength: 38
+  # DBClusterPort:
+  #   Type: String
+  #   Default: '8182'
+  #   Description: Enter the port of your Neptune cluster
+  # NeptuneQueryTimeout:
+  #   Type: Number
+  #   Default: 7200000
+  #   Description: Neptune Query Time out (in milliseconds)
+  # NeptuneEnableAuditLog:
+  #   Type: Number
+  #   Default: 0
+  #   AllowedValues:
+  #   - 0
+  #   - 1
+  #   Description: Enable Audit Log. 0 means disable and 1 means enable.
+  # IamAuthEnabled:
+  #   Type: String
+  #   Default: 'false'
+  #   AllowedValues:
+  #   - 'true'
+  #   - 'false'
+  #   Description: Enable IAM Auth for Neptune.
+  # AttachBulkloadIAMRoleToNeptuneCluster:
+  #   Type: String
+  #   Default: 'true'
+  #   AllowedValues:
+  #   - 'true'
+  #   - 'false'
+  #   Description: Attach Bulkload IAM role to cluster
+  # StorageEncrypted:
+  #   Description: Enable Encryption for Neptune.
+  #   Type: String
+  #   Default: 'true'
+  #   AllowedValues:
+  #   - 'true'
+  #   - 'false'
+  # NotebookInstanceType:
+  #   Description: SageMaker Notebook instance type. Please refer https://aws.amazon.com/sagemaker/pricing/ for uptodate allowed instance type in aws region and https://aws.amazon.com/neptune/pricing/ for pricing.
+  #   Type: String
+  #   Default: ml.t3.medium
+  #   AllowedValues:
+  #   - ml.t3.medium
+  #   - ml.t3.large
+  #   - ml.t3.xlarge
+  #   ConstraintDescription: Must be a valid SageMaker instance type.
+ 
+  # RouteTableId1:
+  #   Description: OPTIONAL Route table Ids
+  #   Type: String
+  # RouteTableId2:
+  #   Description: OPTIONAL Route table Ids
+  #   Type: String
+  # RouteTableId3:
+  #   Description: OPTIONAL Route table Ids
+  #   Type: String
+Resources:
+  CustomTransform:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${S3Bucket}/templates/cst.yaml"
+  NFS:
+  # Neptune Flow Setup
+    Type: AWS::CloudFormation::Stack
+    DependsOn: 
+      - CustomTransform
+      - ES
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${S3Bucket}/templates/nf.yaml"
+      TimeoutInMinutes: 60
+      Parameters:
+        KinesisArn: !GetAtt ES.Arn
+        # DBClusterId: !Ref DBClusterId
+        # DbInstanceType: !Ref DbInstanceType
+        # MinNCUs: !Ref MinNCUs
+        # MaxNCUs: !Ref MaxNCUs
+        # DBReplicaIdentifierSuffix: !Ref DBReplicaIdentifierSuffix
+        # DBClusterPort: !Ref DBClusterPort
+        # NeptuneQueryTimeout: !Ref NeptuneQueryTimeout
+        # NeptuneEnableAuditLog: !Ref NeptuneEnableAuditLog
+        # IamAuthEnabled: !Ref IamAuthEnabled
+        # AttachBulkloadIAMRoleToNeptuneCluster: !Ref AttachBulkloadIAMRoleToNeptuneCluster
+        # StorageEncrypted: !Ref StorageEncrypted
+        # NotebookInstanceType: !Ref NotebookInstanceType
+        SubnetId1: !Ref SubnetId1
+        SubnetId2: !Ref SubnetId2
+        SubnetId3: !Ref SubnetId3
+        VPCId: !Ref VPCId
+        S3Bucket: !Ref S3Bucket
+  TFS:
+  # Timestream Flow Setup
+    Type: AWS::CloudFormation::Stack
+    DependsOn: 
+      - CustomTransform
+      - ES
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${S3Bucket}/templates/tf.yaml"
+      TimeoutInMinutes: 60
+      Parameters:
+        KinesisStream: !Ref ES
+        S3Bucket: !Ref S3Bucket
+  ES:
+  # Event Stream
+    Type: 'AWS::Kinesis::Stream'
+    Properties:
+      Name: !Sub ${AWS::StackName}-EventStream
+      RetentionPeriodHours: 24
+      ShardCount: 1
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-EventStream

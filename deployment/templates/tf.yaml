@@ -1,0 +1,602 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create a Timestream database and a tables and scheduled query
+Parameters:
+  S3Prefix:
+    Type: String
+    Default: timestreamquery
+    Description: Prefix to save scheduled query errors. Timestream will append a slash
+  Params:
+    Description: Params send to custom resource
+    Type: String
+    Default: "arg1,arg2,arg3"
+  KinesisStream:
+    Type: String
+    Description: Name of the stream
+  S3Bucket:
+    Type: String
+    Description: Bucket where build assets are kept
+    Default: riskandfraudlogs-assets
+Resources:
+  CustomResource:
+    Type: "Custom::CustomResource"
+    Properties:
+      ServiceToken: !GetAtt Lambda.Arn
+      Region: !Ref "AWS::Region"
+      ParamSendToLambda: !Ref Params
+
+  TimestreamApplication:
+    Type: AWS::KinesisAnalyticsV2::Application
+#    Condition: EnableKinesis
+    Properties:
+      ApplicationName: !Sub "${AWS::StackName}_Application"
+      ApplicationDescription: "KDA Flink Adapter"
+      RuntimeEnvironment: "FLINK-1_15"
+      ApplicationConfiguration:
+        ApplicationCodeConfiguration:
+          CodeContent:
+            S3ContentLocation:
+              BucketARN: !Sub "arn:aws:s3:::${S3Bucket}"
+              FileKey: !Sub "build/kinesis-to-timestream-app-0.1-SNAPSHOT.jar"
+          CodeContentType: 'ZIPFILE'
+        EnvironmentProperties:
+          PropertyGroups:
+            - PropertyGroupId: "t1"
+              PropertyMap:
+                InputStreamName :  !Ref KinesisStream
+                Region : !Ref "AWS::Region"
+                TimestreamDbName : !Ref FraudDetectionDB
+                TimestreamTableName : !GetAtt TransactionTable.Name
+                Metadata : "{\
+                  \"events\" : \
+                  [\
+                    {\
+                      \"event\": \"transaction\" ,\
+                      \"dimensions\" : [\
+                        {\"name\": \"account_num\", \"type\": \"VARCHAR\"},\
+                        {\"name\": \"merchant_num\", \"type\": \"VARCHAR\"} \
+                      ],\
+                      \"measures\" : [\
+                        {\"name\": \"value\", \"type\": \"DOUBLE\"}\
+                      ],\ 
+                      \"mappings\": [\
+                        {\"source\" : \"account\",\"target\" : \"account_num\"},\
+                        {\"source\" : \"merchant\", \"target\" :  \"merchant_num\"},\
+                        {\"source\":  \"transaction_amount\", \"target\": \"value\"}\
+                      ]\
+                    }\
+                  ]\
+                 }"
+      ServiceExecutionRole: !GetAtt KinesisAnalyticsRole.Arn
+
+  FraudDetectionDB:
+    Type: AWS::Timestream::Database
+
+  TransactionTable:
+    Type: AWS::Timestream::Table
+    Properties:
+      DatabaseName: !Ref FraudDetectionDB
+      RetentionProperties:
+        MemoryStoreRetentionPeriodInHours: "24"
+        MagneticStoreRetentionPeriodInDays: "7"
+
+  HighValueAggregation:
+    Type: AWS::Timestream::Table
+    Properties:
+      DatabaseName: !Ref FraudDetectionDB
+      RetentionProperties:
+        MemoryStoreRetentionPeriodInHours: "24"
+        MagneticStoreRetentionPeriodInDays: "7"
+  FrequentAggregation:
+    Type: AWS::Timestream::Table
+    Properties:
+      DatabaseName: !Ref FraudDetectionDB
+      RetentionProperties:
+        MemoryStoreRetentionPeriodInHours: "24"
+        MagneticStoreRetentionPeriodInDays: "7"
+    
+  ScheduledQuerySNS:
+    Type: AWS::SNS::Topic
+
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        # S3 API allows unencrypted traffic by default
+        - Sid: Require TLS
+          Effect: Deny
+          Principal: "*"
+          Action:
+          - "s3:*"
+          Resource: !Sub "arn:aws:s3:::${S3Bucket}"
+          Condition:
+            Bool:
+              "aws:SecureTransport": "false"
+
+  ScheduledQueryExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "timestream.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+      - !Ref SQPolicy
+
+  ScheduledQuery1:
+    Type: AWS::Timestream::ScheduledQuery
+    # Condition: EnableSQ
+    DependsOn: CustomResource
+    Properties:
+      ErrorReportConfiguration:
+        S3Configuration:
+          BucketName: !Ref S3Bucket
+          ObjectKeyPrefix: !Ref S3Prefix
+      NotificationConfiguration:
+        SnsConfiguration:
+          TopicArn: !Ref ScheduledQuerySNS
+      QueryString: !Sub |
+        select * from
+        (SELECT account_num, bin(time, 5m) as minute, SUM(value) as totaltransactionamount, measure_name
+        FROM "${FraudDetectionDB}"."${TransactionTable.Name}"
+        WHERE time between ago(30m) and now()
+        GROUP BY bin(time, 5m), account_num, measure_name) 
+        where totaltransactionamount > 50000
+      ScheduleConfiguration:
+        ScheduleExpression: "rate(5 minutes)"
+      ScheduledQueryExecutionRoleArn: !GetAtt ScheduledQueryExecutionRole.Arn
+      TargetConfiguration:
+        TimestreamConfiguration:
+          DatabaseName: !Ref FraudDetectionDB
+          DimensionMappings:
+           - DimensionValueType: "VARCHAR"
+             Name: "account_num"
+          MeasureNameColumn: "measure_name"
+          MultiMeasureMappings:
+            MultiMeasureAttributeMappings:
+             - MeasureValueType: "DOUBLE"
+               SourceColumn: "totaltransactionamount"
+          TableName: !GetAtt HighValueAggregation.Name
+          TimeColumn: "minute"
+
+  ScheduledQuery2:
+    Type: AWS::Timestream::ScheduledQuery
+    # Condition: EnableSQ
+    DependsOn: CustomResource
+    Properties:
+      ErrorReportConfiguration:
+        S3Configuration:
+          BucketName: !Ref S3Bucket
+          ObjectKeyPrefix: !Ref S3Prefix
+      NotificationConfiguration:
+        SnsConfiguration:
+          TopicArn: !Ref ScheduledQuerySNS
+      QueryString: !Sub |
+        select * from
+        (SELECT account_num, bin(time, 15m) as minute, count(value) as countTransaction, measure_name
+        FROM "${FraudDetectionDB}"."${TransactionTable.Name}"
+        WHERE time between ago(1h) and now() and value = 500
+        GROUP BY bin(time, 15m), account_num, measure_name) 
+        where countTransaction > 5
+      ScheduleConfiguration:
+        ScheduleExpression: "rate(5 minutes)"
+      ScheduledQueryExecutionRoleArn: !GetAtt ScheduledQueryExecutionRole.Arn
+      TargetConfiguration:
+        TimestreamConfiguration:
+          DatabaseName: !Ref FraudDetectionDB
+          DimensionMappings:
+           - DimensionValueType: "VARCHAR"
+             Name: "account_num"
+          MeasureNameColumn: "measure_name"
+          MultiMeasureMappings:
+            MultiMeasureAttributeMappings:
+             - MeasureValueType: "BIGINT"
+               SourceColumn: "countTransaction"
+          TableName: !GetAtt FrequentAggregation.Name
+          TimeColumn: "minute"
+
+  SQPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: "Allow timestream scheduled query"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource:
+            - !Ref ScheduledQuerySNS
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+          Resource: !Sub "arn:aws:s3:::${S3Bucket}"
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:GetObjectVersion
+          Resource: !Sub "arn:aws:s3:::${S3Bucket}/*"
+        - Effect: Allow
+          Action:
+            - timestream:DescribeEndpoints
+            - timestream:SelectValues
+          Resource:
+            - "*" # cannot be restricted
+        - Effect: Allow
+          Action:
+            - timestream:Select
+          Resource:
+            - !GetAtt TransactionTable.Arn
+        - Effect: Allow
+          Action:
+            - timestream:Select # is this required?
+            - timestream:WriteRecords
+          Resource:
+            - !GetAtt HighValueAggregation.Arn
+            - !GetAtt FrequentAggregation.Arn
+
+  KinesisAnalyticsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: kinesisanalytics.amazonaws.com
+            Action: "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - !Sub "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      Policies:
+        - PolicyName: KinesisToTimeStream
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                 - s3:GetObject
+                 - s3:GetObjectVersion
+                 - s3:ListBucket
+                 - kms:Decrypt
+                 - sns:Publish
+                 - kinesis:Get*
+                 - kinesis:List*
+                 - kinesis:PutRecord
+                 - timestream:describeEndpoints
+                 - timestream:Select
+                 - timestream:SelectValues
+                 - timestream:WriteRecords
+                 - timestream:DescribeTable
+                 - timestream:ListMeasures
+                 - timestream:ListTables
+                 - timestream:ListDatabases
+                 - timestream:CancelQuery
+                 - timestream:CreateTable
+                 - timestream:CreateDatabase
+                 - timestream:DescribeDatabase
+                 - timestream:DeleteTable
+                 - timestream:DeleteDatabase
+                 - timestream:UpdateTable
+                 - timestream:UpdateDatabase
+                 - sts:assumeRole
+                 - cloudwatch:*
+                Resource: '*'
+
+  ScheduleQueryRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Tags:
+        - Key: Project
+          Value: timestream-immersion
+      RoleName: !Sub "${AWS::StackName}-SGRole" # give a name to this role
+      AssumeRolePolicyDocument: # (required) only one trust policy with a role
+        Version: '2012-10-17'
+        Statement:
+         -
+            Effect: Allow
+            Principal:
+              Service:
+               - 'timestream.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Policies: # list of inline policy documents that are embedded in the role
+        - PolicyName: TimestreamScheduledQueryPolicy # give a unique name to this policy
+          PolicyDocument: # JSON policy document
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                - kms:Decrypt
+                - sns:Publish
+                - s3:getBucketAcl
+                - s3:putObject
+                - timestream:describeEndpoints
+                - timestream:Select
+                - timestream:SelectValues
+                - timestream:WriteRecords
+                # Resource: arn:aws:timestream:::database/*
+                # Resource: arn:aws:timestream:::database/kdaflink
+                Resource: '*'
+        - PolicyName: S3ScheduledQueryPolicy # give a unique name to this policy
+          PolicyDocument: # JSON policy document
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                - kms:Decrypt
+                - sns:Publish
+                - s3:getBucketAcl
+                - s3:putObject
+                - timestream:describeEndpoints
+                - timestream:Select
+                - timestream:SelectValues
+                - timestream:WriteRecords
+                Resource: arn:aws:s3:::*
+
+        - PolicyName: SNSScheduledQueryPolicy # give a unique name to this policy
+          PolicyDocument: # JSON policy document
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                - sns:Publish
+                Resource: '*'
+        - PolicyName: KMSScheduledQueryPolicy # give a unique name to this policy
+          PolicyDocument: # JSON policy document
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                - kms:Decrypt
+                - sns:Publish
+                - s3:getBucketAcl
+                - s3:putObject
+                - timestream:describeEndpoints
+                - timestream:Select
+                - timestream:SelectValues
+                - timestream:WriteRecords
+                Resource: arn:aws:kms:::*
+                # Resource: '*'
+  
+  Lambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import os
+          import datetime as dt
+          import logging
+          from random import uniform
+          import json
+          import cfnresponse
+
+          import awswrangler as wr
+          import pandas as pd
+
+          logger = logging.getLogger(__name__)
+
+          def write_record():
+            t = dt.datetime.now(dt.timezone.utc)
+            df = pd.DataFrame([
+                {
+                    'time': t,
+                    'account_num': 'A1',
+                    'merchant_num': 'B1',
+                    'valueDummy': 'value',
+                    'value': uniform(1,10)
+                },
+                {
+                    'time': t,
+                    'account_num': 'A2',
+                    'merchant_num': 'B2',
+                    'valueDummy': 'value',
+                    'value': uniform(1,10)
+                }
+            ])
+
+            rejected_records = wr.timestream.write(
+                df,
+                database=os.environ['database'],
+                table=os.environ['table'],
+                time_col='time',
+                measure_col=['value', 'valueDummy'],
+                dimensions_cols=['account_num', 'merchant_num'],
+                measure_name='transaction'
+            )
+            result = len(rejected_records)
+            return result
+            
+          def handler(event, context):
+            print('----event---')
+            print(event)
+            print('----context---')
+            print(context)
+            response = {
+              "Status": "None",
+              "PhysicalResourceId": context.log_stream_name,
+              "StackId": event['StackId'],
+              "RequestId": event['RequestId'],
+              "LogicalResourceId": event['LogicalResourceId'],
+              "Data": {}
+            }
+            if event.get('RequestType') == 'Create':
+              rejected = write_record()
+              message = f"rejected {rejected}"
+              responseData = {}
+              responseData['message'] = message
+              logging.info('Sending %s to cloudformation', responseData['message'])
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+
+            elif event.get('RequestType') == 'Delete':
+              responseData = {}
+              responseData['message'] = "Goodbye from lambda"
+              logging.info('Sending %s to cloudformation', responseData['message'])
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+            else:
+              logging.error('Unknown operation: %s', event.get('RequestType'))
+
+      Description: write data to test timestream table
+      Environment:
+        Variables:
+          database: !Ref FraudDetectionDB
+          table: !GetAtt TransactionTable.Name
+      Handler: index.handler
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python39:5"
+      MemorySize: 200
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: python3.9
+      Timeout: 10
+
+
+  LambdaRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+      - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      - !Ref LambdaPolicy
+
+  LambdaPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: "Allow timestream scheduled query"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Action: timestream:DescribeEndpoints
+          Resource:
+          - "*" # can't be restricted
+        - Sid: VisualEditor1
+          Effect: Allow
+          Action: timestream:WriteRecords
+          Resource:
+          - !Sub "arn:aws:timestream:${AWS::Region}:${AWS::AccountId}:database/${FraudDetectionDB}/table/${TransactionTable.Name}"
+
+  StartApplicationLambdaInvoke:
+    Description: Invokes StartApplicationLambda to start an application.
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: StartApplicationLambda
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt StartApplicationLambda.Arn
+      Region: !Ref AWS::Region
+      ApplicationName: !Ref TimestreamApplication
+
+  StartApplicationLambdaRole:
+      Type: AWS::IAM::Role
+      DependsOn: TimestreamApplication
+      Properties:
+        Description: A role for lambda to use while interacting with an application.
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/AmazonKinesisAnalyticsFullAccess
+          - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        Path: /
+
+  StartApplicationLambda:
+      Type: AWS::Lambda::Function
+      DependsOn: StartApplicationLambdaRole
+      Properties:
+        Description: Starts an application when invoked.
+        Runtime: python3.8
+        Role: !GetAtt StartApplicationLambdaRole.Arn
+        Handler: index.lambda_handler
+        Timeout: 30
+        Code:
+          ZipFile: |
+            import logging
+            import cfnresponse
+            import boto3
+
+            logger = logging.getLogger()
+            logger.setLevel(logging.INFO)
+
+            def lambda_handler(event, context):
+              logger.info('Incoming CFN event {}'.format(event))
+
+              try:
+                application_name = event['ResourceProperties']['ApplicationName']
+
+                # filter out events other than Create or Update,
+                # you can also omit Update in order to start an application on Create only.
+                if event['RequestType'] not in ["Create", "Update"]:
+                  logger.info('No-op for Application {} because CFN RequestType {} is filtered'.format(application_name, event['RequestType'])) 
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+
+                  return
+
+                # use kinesisanalyticsv2 API to start an application.
+                client_kda = boto3.client('kinesisanalyticsv2', region_name=event['ResourceProperties']['Region'])
+
+                # get application status.
+                describe_response = client_kda.describe_application(ApplicationName=application_name)
+                application_status = describe_response['ApplicationDetail']['ApplicationStatus']
+
+                # an application can be started from 'READY' status only.
+                if application_status != 'READY':
+                  logger.info('No-op for Application {} because ApplicationStatus {} is filtered'.format(application_name, application_status)) 
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+
+                  return
+
+                # create RunConfiguration. 
+                run_configuration = { 
+                  'ApplicationRestoreConfiguration': {
+                    'ApplicationRestoreType': 'RESTORE_FROM_LATEST_SNAPSHOT',
+                  }
+                }
+
+                logger.info('RunConfiguration for Application {}: {}'.format(application_name, run_configuration)) 
+
+                # this call doesn't wait for an application to transfer to 'RUNNING' state.
+                client_kda.start_application(ApplicationName=application_name, RunConfiguration=run_configuration)
+
+                logger.info('Started Application: {}'.format(application_name)) 
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as err:
+                logger.error(err)
+                cfnresponse.send(event,context, cfnresponse.FAILED, {"Data": str(err)})
+Outputs:
+  DatabaseName:
+    Description: Timestream Database Name
+    Value: !Ref FraudDetectionDB
+  TableTransactionTable:
+    Description: Timestream Table Name
+    Value: !GetAtt TransactionTable.Name
+  TableHighValueAggregation:
+    Description: Timestream Table Name
+    Value: !GetAtt HighValueAggregation.Name
+  TableFrequentAggregation:
+    Description: Timestream Table Name
+    Value: !GetAtt FrequentAggregation.Name

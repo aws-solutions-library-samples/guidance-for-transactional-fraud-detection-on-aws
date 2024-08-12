@@ -1,0 +1,296 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'fraudandriskreduction Sample SAM Template for fraudandriskreduction'
+Parameters:
+  KinesisArn:
+    Type: String
+    Description: Arn of Kinesis stream
+  DBClusterId:
+    Description: 'OPTIONAL: Enter the Cluster id of your Neptune cluster. Empty means
+      we create one for your cluster.'
+    Default: ''
+    Type: String
+    MaxLength: 63
+  DbInstanceType:
+    Description: Neptune DB instance type
+    Type: String
+    Default: db.serverless
+    AllowedValues:
+    - db.serverless
+    - db.t3.medium
+    - db.r6g.large
+    - db.r6g.xlarge
+    - db.r6g.2xlarge
+    - db.r6g.4xlarge
+    - db.r6g.8xlarge
+    - db.r5.large
+    - db.r5.xlarge
+    - db.r5.2xlarge
+    - db.r5.4xlarge
+    - db.r5.8xlarge
+    - db.r5.12xlarge
+    ConstraintDescription: Must be a valid Neptune instance type.
+  MinNCUs:
+    Description: Min NCUs to be set on the Neptune cluster(Should be less than or
+      equal to MaxNCUs). Required if DBInstance type is db.serverless
+    Default: 2.5
+    Type: Number
+    MinValue: 1
+    MaxValue: 128
+    ConstraintDescription: Must be a valid value between 1 and 128.
+  MaxNCUs:
+    Description: Max NCUs to be set on the Neptune cluster(Should be greater than
+      or equal to MinNCUs). Required if DBInstance type is db.serverless
+    Default: 128
+    Type: Number
+    MinValue: 1
+    MaxValue: 128
+    ConstraintDescription: Must be a valid value between 1 and 128.
+  DBReplicaIdentifierSuffix:
+    Description: 'OPTIONAL: The ID for the Neptune Replica to use. Empty means no
+      read replica.'
+    Type: String
+    Default: ''
+  DBClusterPort:
+    Type: String
+    Default: '8182'
+    Description: Enter the port of your Neptune cluster
+  NeptuneQueryTimeout:
+    Type: Number
+    Default: 20000
+    Description: Neptune Query Time out (in milliseconds)
+  NeptuneEnableAuditLog:
+    Type: Number
+    Default: 0
+    AllowedValues:
+    - 0
+    - 1
+    Description: Enable Audit Log. 0 means disable and 1 means enable.
+  IamAuthEnabled:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Description: Enable IAM Auth for Neptune.
+  AttachBulkloadIAMRoleToNeptuneCluster:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Description: Attach Bulkload IAM role to cluster
+  StorageEncrypted:
+    Description: Enable Encryption for Neptune.
+    Type: String
+    Default: 'true'
+    AllowedValues:
+    - 'true'
+    - 'false'
+  SubnetId1:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda
+      function can use to access the Neptune cluster. (e.g. subnet1,subnet2)
+    Type: String
+  SubnetId2:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda
+      function can use to access the Neptune cluster. (e.g. subnet1,subnet2)
+    Type: String
+  SubnetId3:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda
+      function can use to access the Neptune cluster. (e.g. subnet1,subnet2)
+    Type: String
+  VPCId:
+    Description: VPC ID
+    Type: String
+  S3Bucket:
+    Type: String
+    Description: Bucket where build assets are kept
+    Default: riskandfraudlogs-assets
+  KmsKeyId:
+    Description: 'OPTIONAL: If StorageEncrypted is true, the Amazon KMS key identifier
+      for the encrypted DB cluster.'
+    Type: String
+    Default: ''
+  NotebookInstanceType:
+    Description: SageMaker Notebook instance type. Please refer https://aws.amazon.com/sagemaker/pricing/
+      for uptodate allowed instance type in aws region and https://aws.amazon.com/neptune/pricing/
+      for pricing.
+    Type: String
+    Default: ml.t3.medium
+    AllowedValues:
+    - ml.t3.medium
+    - ml.t3.large
+    - ml.t3.xlarge
+    ConstraintDescription: Must be a valid SageMaker instance type.
+Outputs:
+  KinesisToNeptuneWriter:
+    Description: Kinesis to Neptune Writer Lambda ARN
+    Value:
+      Fn::GetAtt:
+      - KinesisToNeptuneWriter
+      - Arn
+Resources:
+  NeptuneBaseStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL:
+        Fn::Sub: https://s3.amazonaws.com/${S3Bucket}/templates/nfexisting.yaml
+      TimeoutInMinutes: 60
+      Parameters:
+        DBClusterId:
+          Ref: DBClusterId
+        DbInstanceType:
+          Ref: DbInstanceType
+        MinNCUs:
+          Ref: MinNCUs
+        MaxNCUs:
+          Ref: MaxNCUs
+        DBReplicaIdentifierSuffix:
+          Ref: DBReplicaIdentifierSuffix
+        DBClusterPort:
+          Ref: DBClusterPort
+        NeptuneQueryTimeout:
+          Ref: NeptuneQueryTimeout
+        NeptuneEnableAuditLog:
+          Ref: NeptuneEnableAuditLog
+        IamAuthEnabled:
+          Ref: IamAuthEnabled
+        NotebookInstanceType:
+          Ref: NotebookInstanceType
+        SubnetId1:
+          Ref: SubnetId1
+        SubnetId2:
+          Ref: SubnetId2
+        SubnetId3:
+          Ref: SubnetId3
+        VPCId:
+          Ref: VPCId
+  NeptuneNotebook:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+    - NeptuneBaseStack
+    Properties:
+      TemplateURL:
+        Fn::Sub: https://s3.amazonaws.com/${S3Bucket}/templates/notebook.yaml
+      TimeoutInMinutes: 60
+      Parameters:
+        DBClusterId:
+          Fn::GetAtt:
+          - NeptuneBaseStack
+          - Outputs.DBClusterId
+        NeptuneClusterEndpoint:
+          Fn::GetAtt:
+          - NeptuneBaseStack
+          - Outputs.DBClusterEndpoint
+        NeptuneClusterVpc:
+          Ref: VPCId
+        NeptuneClusterPort:
+          Ref: DBClusterPort
+        NeptuneClusterSubnetId:
+          Ref: SubnetId1
+        NeptuneClientSecurityGroup:
+          Fn::GetAtt:
+          - NeptuneBaseStack
+          - Outputs.NeptuneSG
+        NeptuneLoadFromS3RoleArn:
+          Fn::GetAtt:
+          - NeptuneBaseStack
+          - Outputs.NeptuneLoadFromS3IAMRoleArn
+        NeptuneClusterResourceId:
+          Fn::GetAtt:
+          - NeptuneBaseStack
+          - Outputs.DBClusterResourceId
+  ANC:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+    - NeptuneBaseStack
+    Properties:
+      TemplateURL:
+        Fn::Sub: https://s3.amazonaws.com/${S3Bucket}/templates/ac.yaml
+      TimeoutInMinutes: 60
+      Parameters:
+        NeptuneClusterEndpoint:
+          Fn::GetAtt:
+          - NeptuneBaseStack
+          - Outputs.DBClusterEndpoint
+        NeptunePort:
+          Ref: DBClusterPort
+        NeptuneClusterResourceID:
+          Fn::GetAtt:
+          - NeptuneBaseStack
+          - Outputs.DBClusterResourceId
+        S3Bucket:
+          Ref: S3Bucket
+        SecurityGroupIds:
+          Fn::GetAtt:
+          - NeptuneBaseStack
+          - Outputs.NeptuneSG
+        SubnetIds:
+          Ref: SubnetId1
+  KinesisToNeptuneWriter:
+    Type: AWS::Lambda::Function
+    DependsOn:
+    - NeptuneBaseStack
+    Properties:
+      Code:
+        S3Bucket: !Ref S3Bucket
+        S3Key: build/kinesistoneptunewriter.zip
+      Handler: app.lambda_handler
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - KinesisToNeptuneWriterRole
+        - Arn
+      Runtime: python3.9
+      Timeout: 20
+      VpcConfig:
+        SecurityGroupIds:
+        - Fn::GetAtt:
+          - NeptuneBaseStack
+          - Outputs.NeptuneSG
+        SubnetIds:
+        - Ref: SubnetId1
+        - Ref: SubnetId2
+        - Ref: SubnetId3
+      Environment:
+        Variables:
+          NeptuneClusterEndpoint:
+            Fn::GetAtt:
+            - NeptuneBaseStack
+            - Outputs.DBClusterEndpoint
+          NeptuneClusterPort:
+            Ref: DBClusterPort
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+  KinesisToNeptuneWriterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      - arn:aws:iam::aws:policy/NeptuneFullAccess
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaKinesisExecutionRole
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  KinesisToNeptuneWriterStream:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 100
+      EventSourceArn:
+        Ref: KinesisArn
+      FunctionName:
+        Ref: KinesisToNeptuneWriter
+      StartingPosition: LATEST

@@ -1,215 +1,93 @@
-# Guidance Title (required)
+# Guidance for Transactional Fraud Detection with AWS
+This solution will demonstrate the use of Timestream to monitor micro-level fraud patterns (e.g., spikes in transaction traffic or rapidly changing accounts associated with a single IP address) and use that to flag potential fraudulent activity within a larger macro-level fraud graph stored in Neptune. Neptune's strength is seeing fraud within the macro environment, but not in specific windows of time. Therefore these services should complement each other in a measurable way (not yet proven). This guidance will show how to use these technologies together for fraud detection, but the same pattern can be applied to other use cases where time sensitive micro-indicators and context sensitive macro-level indicators can both be used, such as Customer Data Platforms, trading risk platforms, etc. 
 
-The Guidance title should be consistent with the title established first in Alchemy.
+### Reference architecture
 
-**Example:** *Guidance for Product Substitutions on AWS*
+![](./assets/architecture.png)
 
-This title correlates exactly to the Guidance it’s linked to, including its corresponding sample code repository. 
+## Pre-Requisites
+* Python 3.9
 
+## Limitations
+* TBD
 
-## Table of Contents (required)
 
-List the top-level sections of the README template, along with a hyperlink to the specific section.
+### 1. Create S3 bucket
 
-### Required
+```
+export S3BucketName="riskandfraud-$RANDOM"
+aws s3api create-bucket --bucket $S3BucketName --region us-east-1
 
-1. [Overview](#overview-required)
-    - [Cost](#cost)
-2. [Prerequisites](#prerequisites-required)
-    - [Operating System](#operating-system-required)
-3. [Deployment Steps](#deployment-steps-required)
-4. [Deployment Validation](#deployment-validation-required)
-5. [Running the Guidance](#running-the-guidance-required)
-6. [Next Steps](#next-steps-required)
-7. [Cleanup](#cleanup-required)
+```
 
-***Optional***
+Make note of the S3 bucket created 
 
-8. [FAQ, known issues, additional considerations, and limitations](#faq-known-issues-additional-considerations-and-limitations-optional)
-9. [Revisions](#revisions-optional)
-10. [Notices](#notices-optional)
-11. [Authors](#authors-optional)
+## 2. Package solution
+Run following command to package and upload artefacts to S3 bucket created in Step 1
+```
+./deployment/setup.sh $S3BucketName
+```
 
-## Overview (required)
+## 3. Deploy solution using CloudFormation
+To deploy the solution, use existing Amazon VPC. If you don't have a VPC, refer [AWS Documentation]https://docs.aws.amazon.com/directoryservice/latest/admin-guide/gsg_create_vpc.html  for how to create one. The VPC should have 3 private subnet and one public subnet. The private subnet should have an AWS Nat Gateway attached. Use private subnets for the deploying the template.
 
-1. Provide a brief overview explaining the what, why, or how of your Guidance. You can answer any one of the following to help you write this:
+Run following command
 
-    - **Why did you build this Guidance?**
-    - **What problem does this Guidance solve?**
+```
+export region=<AWSRegion>
+export stack_name="nt-full-$(date +"%d-%s-%h")"
+export vpc=<VPCId>
+export subnet1=<SubnetID1>
+export subnet2=<SubnetID2>
+export subnet3=<SubnetID3>
+aws cloudformation create-stack --stack-name $stack_name --template-url \
+    https://s3.amazonaws.com/$S3BucketName/templates/base.yaml  \
+    --parameters ParameterKey="VPCId","ParameterValue"=$vpc ParameterKey="SubnetId1",ParameterValue=$subnet1  ParameterKey="SubnetId2",ParameterValue=$subnet2 ParameterKey=SubnetId3,ParameterValue=$subnet3 ParameterKey=S3Bucket,ParameterValue=$S3BucketName \
+    --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM CAPABILITY_IAM \
+    --region $region \
+    --profile default
+```
 
-2. Include the architecture diagram image, as well as the steps explaining the high-level overview and flow of the architecture. 
-    - To add a screenshot, create an ‘assets/images’ folder in your repository and upload your screenshot to it. Then, using the relative file path, add it to your README. 
+Make note of the stack id, it takes arround 35 min for the template to run complete. You can monitoring the stack progress in Cloudformation console.
 
-### Cost ( required )
+Sample output:
 
-This section is for a high-level cost estimate. Think of a likely straightforward scenario with reasonable assumptions based on the problem the Guidance is trying to solve. Provide an in-depth cost breakdown table in this section below ( you should use AWS Pricing Calculator to generate cost breakdown ).
+```
+{
+    "StackId": "arn:aws:cloudformation:us-east-1:461115064720:stack/nt-full-25-1695636313-Sep/06a59240-5b8b-11ee-b3ed-0ec66bc9c473"
+}
+```
 
-Start this section with the following boilerplate text:
+## 4. Run producer
+Once the CloudFormation template is deployed, you can putting some test data to verify the solution. Change the Kinesis stream name as per the CloudFormation output
 
-_You are responsible for the cost of the AWS services used while running this Guidance. As of <month> <year>, the cost for running this Guidance with the default settings in the <Default AWS Region (Most likely will be US East (N. Virginia)) > is approximately $<n.nn> per month for processing ( <nnnnn> records )._
+Run following command 
 
-Replace this amount with the approximate cost for running your Guidance in the default Region. This estimate should be per month and for processing/serving resonable number of requests/entities.
+```
+pip3 install schedule boto3 aws_requests_auth requests uuid watchtower urllib3==1.26
 
-Suggest you keep this boilerplate text:
-_We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this Guidance._
+python ./source/kinesisproducer/kinesisproducer.py -r us-east-1 -k nt-attempt2403-EventStream
+```
 
-### Sample Cost Table ( required )
+## 5. Verify the solution [Adhoc analysis]
 
-**Note : Once you have created a sample cost table using AWS Pricing Calculator, copy the cost breakdown to below table and upload a PDF of the cost estimation on BuilderSpace. Do not add the link to the pricing calculator in the ReadMe.**
+Refer the notebook created 
 
-The following table provides a sample cost breakdown for deploying this Guidance with the default parameters in the US East (N. Virginia) Region for one month.
+![](./assets/NotebookOutput.png)
 
-| AWS service  | Dimensions | Cost [USD] |
-| ----------- | ------------ | ------------ |
-| Amazon API Gateway | 1,000,000 REST API calls per month  | $ 3.50month |
-| Amazon Cognito | 1,000 active users per month without advanced security feature | $ 0.00 |
+Upload the [ipython notebook](./source/notebooks/NT-FraudAndRisk.ipynb)  to Neptune Notebook created. Execute the cells to analyse the data.
 
-## Prerequisites (required)
+## 6. Verify the solution [Quicksight dashboard]
 
-### Operating System (required)
+Once the CloudFormation template is deployed, setup the quicksight dashboard. Follow steps below:
 
-- Talk about the base Operating System (OS) and environment that can be used to run or deploy this Guidance, such as *Mac, Linux, or Windows*. Include all installable packages or modules required for the deployment. 
-- By default, assume Amazon Linux 2/Amazon Linux 2023 AMI as the base environment. All packages that are not available by default in AMI must be listed out.  Include the specific version number of the package or module.
+* Setup QuickSight datasource for Timestream table "TableHighValueAggregation". Refer documentation: https://docs.aws.amazon.com/quicksight/latest/user/using-data-from-timestream.html Refer snapshot below:
+![](./assets/TimeStreamFlowOutput.png)
+* Setup Athena-Neptune datasource for Athena Datasource created using template. Refer documentation: https://aws.amazon.com/blogs/database/build-interactive-graph-data-analytics-and-visualizations-using-amazon-neptune-amazon-athena-federated-query-and-amazon-quicksight Refer snapshot below:
+![](./assets/NeptuneFlowOutput.png)
 
-**Example:**
-“These deployment instructions are optimized to best work on **<Amazon Linux 2 AMI>**.  Deployment in another OS may require additional steps.”
+Refer the blog https://aws.amazon.com/blogs/database/build-interactive-graph-data-analytics-and-visualizations-using-amazon-neptune-amazon-athena-federated-query-and-amazon-quicksight/  on how to setup a QuickSight Analysis Dashboard. 
 
-- Include install commands for packages, if applicable.
 
 
-### Third-party tools (If applicable)
 
-*List any installable third-party tools required for deployment.*
-
-
-### AWS account requirements (If applicable)
-
-*List out pre-requisites required on the AWS account if applicable, this includes enabling AWS regions, requiring ACM certificate.*
-
-**Example:** “This deployment requires you have public ACM certificate available in your AWS account”
-
-**Example resources:**
-- ACM certificate 
-- DNS record
-- S3 bucket
-- VPC
-- IAM role with specific permissions
-- Enabling a Region or service etc.
-
-
-### aws cdk bootstrap (if sample code has aws-cdk)
-
-<If using aws-cdk, include steps for account bootstrap for new cdk users.>
-
-**Example blurb:** “This Guidance uses aws-cdk. If you are using aws-cdk for first time, please perform the below bootstrapping....”
-
-### Service limits  (if applicable)
-
-<Talk about any critical service limits that affect the regular functioning of the Guidance. If the Guidance requires service limit increase, include the service name, limit name and link to the service quotas page.>
-
-### Supported Regions (if applicable)
-
-<If the Guidance is built for specific AWS Regions, or if the services used in the Guidance do not support all Regions, please specify the Region this Guidance is best suited for>
-
-
-## Deployment Steps (required)
-
-Deployment steps must be numbered, comprehensive, and usable to customers at any level of AWS expertise. The steps must include the precise commands to run, and describe the action it performs.
-
-* All steps must be numbered.
-* If the step requires manual actions from the AWS console, include a screenshot if possible.
-* The steps must start with the following command to clone the repo. ```git clone xxxxxxx```
-* If applicable, provide instructions to create the Python virtual environment, and installing the packages using ```requirement.txt```.
-* If applicable, provide instructions to capture the deployed resource ARN or ID using the CLI command (recommended), or console action.
-
- 
-**Example:**
-
-1. Clone the repo using command ```git clone xxxxxxxxxx```
-2. cd to the repo folder ```cd <repo-name>```
-3. Install packages in requirements using command ```pip install requirement.txt```
-4. Edit content of **file-name** and replace **s3-bucket** with the bucket name in your account.
-5. Run this command to deploy the stack ```cdk deploy``` 
-6. Capture the domain name created by running this CLI command ```aws apigateway ............```
-
-
-
-## Deployment Validation  (required)
-
-<Provide steps to validate a successful deployment, such as terminal output, verifying that the resource is created, status of the CloudFormation template, etc.>
-
-
-**Examples:**
-
-* Open CloudFormation console and verify the status of the template with the name starting with xxxxxx.
-* If deployment is successful, you should see an active database instance with the name starting with <xxxxx> in        the RDS console.
-*  Run the following CLI command to validate the deployment: ```aws cloudformation describe xxxxxxxxxxxxx```
-
-
-
-## Running the Guidance (required)
-
-<Provide instructions to run the Guidance with the sample data or input provided, and interpret the output received.> 
-
-This section should include:
-
-* Guidance inputs
-* Commands to run
-* Expected output (provide screenshot if possible)
-* Output description
-
-
-
-## Next Steps (required)
-
-Provide suggestions and recommendations about how customers can modify the parameters and the components of the Guidance to further enhance it according to their requirements.
-
-
-## Cleanup (required)
-
-- Include detailed instructions, commands, and console actions to delete the deployed Guidance.
-- If the Guidance requires manual deletion of resources, such as the content of an S3 bucket, please specify.
-
-
-
-## FAQ, known issues, additional considerations, and limitations (optional)
-
-
-**Known issues (optional)**
-
-<If there are common known issues, or errors that can occur during the Guidance deployment, describe the issue and resolution steps here>
-
-
-**Additional considerations (if applicable)**
-
-<Include considerations the customer must know while using the Guidance, such as anti-patterns, or billing considerations.>
-
-**Examples:**
-
-- “This Guidance creates a public AWS bucket required for the use-case.”
-- “This Guidance created an Amazon SageMaker notebook that is billed per hour irrespective of usage.”
-- “This Guidance creates unauthenticated public API endpoints.”
-
-
-Provide a link to the *GitHub issues page* for users to provide feedback.
-
-
-**Example:** *“For any feedback, questions, or suggestions, please use the issues tab under this repo.”*
-
-## Revisions (optional)
-
-Document all notable changes to this project.
-
-Consider formatting this section based on Keep a Changelog, and adhering to Semantic Versioning.
-
-## Notices (optional)
-
-Include a legal disclaimer
-
-**Example:**
-*Customers are responsible for making their own independent assessment of the information in this Guidance. This Guidance: (a) is for informational purposes only, (b) represents AWS current product offerings and practices, which are subject to change without notice, and (c) does not create any commitments or assurances from AWS and its affiliates, suppliers or licensors. AWS products or services are provided “as is” without warranties, representations, or conditions of any kind, whether express or implied. AWS responsibilities and liabilities to its customers are controlled by AWS agreements, and this Guidance is not part of, nor does it modify, any agreement between AWS and its customers.*
-
-
-## Authors (optional)
-
-Name of code contributors
