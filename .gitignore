@@ -1,0 +1,5 @@
+
+/target
+source/.DS_Store
+/source/kinesistotimestreamwriter/.idea
+*.iml
