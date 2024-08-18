@@ -73,8 +73,8 @@ Resources:
       Name: !Sub 'athenav2-${AWS::StackName}'
       WorkGroupConfiguration:
         EngineVersion:
-          EffectiveEngineVersion: 'Athena engine version 2'
-          SelectedEngineVersion: 'Athena engine version 2'
+          EffectiveEngineVersion: 'Athena engine version 3'
+          SelectedEngineVersion: 'Athena engine version 3'
 
   AthenaDataCatalog:
     Type: AWS::Athena::DataCatalog
