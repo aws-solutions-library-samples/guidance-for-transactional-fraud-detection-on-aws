@@ -109,7 +109,11 @@ Resources:
           Effect: Deny
           Principal: "*"
           Action:
-          - "s3:*"
+          # - "s3:*"
+           - s3:GetObject
+           - s3:PutObject
+           - s3:GetObjectVersion
+           - s3:ListBucket
           Resource: !Sub "arn:aws:s3:::${S3Bucket}"
           Condition:
             Bool:
