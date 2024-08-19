@@ -109,11 +109,7 @@ Resources:
           Effect: Deny
           Principal: "*"
           Action:
-          # - "s3:*"
-           - s3:GetObject
-           - s3:PutObject
-           - s3:GetObjectVersion
-           - s3:ListBucket
+          - "s3:*"
           Resource: !Sub "arn:aws:s3:::${S3Bucket}"
           Condition:
             Bool:
@@ -249,6 +245,8 @@ Resources:
             - !GetAtt HighValueAggregation.Arn
             - !GetAtt FrequentAggregation.Arn
 
+
+
   KinesisAnalyticsRole:
     Type: AWS::IAM::Role
     Properties:
@@ -294,7 +292,12 @@ Resources:
                  - timestream:UpdateTable
                  - timestream:UpdateDatabase
                  - sts:assumeRole
-                 - cloudwatch:*
+                 - cloudwatch:List*
+                 - cloudwatch:Put*
+                 - cloudwatch:Get*
+                 - cloudwatch:Describe*
+                 - cloudwatch:Start*
+                 - cloudwatch:Stop*
                 Resource: '*'
 
   ScheduleQueryRole:

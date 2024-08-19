@@ -142,7 +142,12 @@ Refer the notebook created
 
 Upload the [ipython notebook](./source/notebooks/NT-FraudAndRisk.ipynb)  to Neptune Notebook created. Execute the cells to analyse the data.
 
-3. Optional: Verify the solution [Quicksight dashboard]
+3. Verify data ingested in Timestream
+# TODO add Timestream query and screenshot
+## Data loaded
+## Scheduled Queries
+
+4. Optional: Verify the solution [Quicksight dashboard]
 
 Once the CloudFormation template is deployed, setup the quicksight dashboard. Follow steps below:
 
