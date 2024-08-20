@@ -88,6 +88,9 @@ Resources:
 
   FraudDetectionDB:
     Type: AWS::Timestream::Database
+    DependsOn: TFSKey
+    Properties:
+      KmsKeyId: !Ref TFSKey
 
   TransactionTable:
     Type: AWS::Timestream::Table
@@ -96,6 +99,11 @@ Resources:
       RetentionProperties:
         MemoryStoreRetentionPeriodInHours: "24"
         MagneticStoreRetentionPeriodInDays: "7"
+      Schema:
+        CompositePartitionKey:
+          - enforcementInRecord: "REQUIRED"
+            name: "account_num"
+            type: "DIMENSION"
 
   HighValueAggregation:
     Type: AWS::Timestream::Table
@@ -104,6 +112,12 @@ Resources:
       RetentionProperties:
         MemoryStoreRetentionPeriodInHours: "24"
         MagneticStoreRetentionPeriodInDays: "7"
+      Schema:
+        CompositePartitionKey:
+          - enforcementInRecord: "REQUIRED"
+            name: "account_num"
+            type: "DIMENSION"
+
   FrequentAggregation:
     Type: AWS::Timestream::Table
     Properties:
@@ -111,7 +125,12 @@ Resources:
       RetentionProperties:
         MemoryStoreRetentionPeriodInHours: "24"
         MagneticStoreRetentionPeriodInDays: "7"
-    
+      Schema:
+        CompositePartitionKey:
+          - enforcementInRecord: "REQUIRED"
+            name: "account_num"
+            type: "DIMENSION"
+
   ScheduledQuerySNS:
     Type: AWS::SNS::Topic
 
@@ -169,6 +188,7 @@ Resources:
         WHERE time between ago(30m) and now()
         GROUP BY bin(time, 5m), account_num, measure_name) 
         where totaltransactionamount > 50000
+      KmsKeyId: !Ref TFSKey
       ScheduleConfiguration:
         ScheduleExpression: "rate(5 minutes)"
       ScheduledQueryExecutionRoleArn: !GetAtt ScheduledQueryExecutionRole.Arn
@@ -205,6 +225,7 @@ Resources:
         WHERE time between ago(1h) and now() and value = 500
         GROUP BY bin(time, 15m), account_num, measure_name) 
         where countTransaction > 5
+      KmsKeyId: !Ref TFSKey
       ScheduleConfiguration:
         ScheduleExpression: "rate(5 minutes)"
       ScheduledQueryExecutionRoleArn: !GetAtt ScheduledQueryExecutionRole.Arn
@@ -262,6 +283,11 @@ Resources:
           Resource:
             - !GetAtt HighValueAggregation.Arn
             - !GetAtt FrequentAggregation.Arn
+        - Effect: Allow
+          Action:
+            - kms:*
+          Resource:
+            - !GetAtt TFSKey.Arn
 
 
 
