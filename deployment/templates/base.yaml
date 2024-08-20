@@ -151,8 +151,21 @@ Parameters:
   #   Description: OPTIONAL Route table Ids
   #   Type: String
 Resources:
+  GenericSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Used within Templates when needed
+      # VpcId: !Ref myVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/32
+          Description: Web port
   CustomTransform:
     Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - GenericSecurityGroup
     Properties:
       TemplateURL: !Sub "https://s3.amazonaws.com/${S3Bucket}/templates/cst.yaml"
       Parameters:
@@ -161,6 +174,7 @@ Resources:
         SubnetId3: !Ref SubnetId3
         VPCId: !Ref VPCId
         S3Bucket: !Ref S3Bucket
+        SecurityGroup: !Ref GenericSecurityGroup
   NFS:
   # Neptune Flow Setup
     Type: AWS::CloudFormation::Stack

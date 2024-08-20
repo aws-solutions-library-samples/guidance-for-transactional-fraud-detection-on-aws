@@ -20,6 +20,9 @@ Parameters:
     Type: String
     Description: Bucket where build assets are kept
     Default: riskandfraudlogs-assets
+  SecurityGroup:
+    Type: String
+    Description: Security Group created in base template for reuse
 Resources:
   TransformExecutionRole:
     Type: AWS::IAM::Role
@@ -125,5 +128,9 @@ Outputs:
   SubnetId3:
     Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda can use
     Value: !Ref SubnetId3
+  SecurityGroup:
+    Description: Security Group created in base template for reuse
+    Value: !Ref SecurityGroup
+
 
 
