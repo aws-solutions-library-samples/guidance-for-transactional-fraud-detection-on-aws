@@ -155,6 +155,12 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub "https://s3.amazonaws.com/${S3Bucket}/templates/cst.yaml"
+      Parameters:
+        SubnetId1: !Ref SubnetId1
+        SubnetId2: !Ref SubnetId2
+        SubnetId3: !Ref SubnetId3
+        VPCId: !Ref VPCId
+        S3Bucket: !Ref S3Bucket
   NFS:
   # Neptune Flow Setup
     Type: AWS::CloudFormation::Stack

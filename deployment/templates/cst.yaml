@@ -1,5 +1,25 @@
 AWSTemplateFormatVersion: 2010-09-09
 # Custom string transformation
+Parameters:
+  SubnetId1:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda
+      function can use to access the Neptune cluster. (e.g. subnet1,subnet2)
+    Type: String
+  SubnetId2:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda
+      function can use to access the Neptune cluster. (e.g. subnet1,subnet2)
+    Type: String
+  SubnetId3:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda
+      function can use to access the Neptune cluster. (e.g. subnet1,subnet2)
+    Type: String
+  VPCId:
+    Description: VPC ID
+    Type: String
+  S3Bucket:
+    Type: String
+    Description: Bucket where build assets are kept
+    Default: riskandfraudlogs-assets
 Resources:
   TransformExecutionRole:
     Type: AWS::IAM::Role
@@ -18,11 +38,21 @@ Resources:
             Version: 2012-10-17
             Statement:
               - Effect: Allow
-                Action: ['logs:*']
+                # Action: ['logs:*']
+                Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                - logs:DescribeLogStreams
                 Resource: 'arn:aws:logs:*:*:*'
   TransformFunction:
     Type: AWS::Lambda::Function
     Properties:
+#      VpcConfig:
+#        SubnetIds:
+#        - !Ref SubnetId1
+#        - !Ref SubnetId2
+#        - !Ref SubnetId3
       Code:
         ZipFile: |
           import traceback
@@ -69,6 +99,7 @@ Resources:
       Handler: index.handler
       Runtime: python3.9
       Role: !GetAtt TransformExecutionRole.Arn
+      ReservedConcurrentExecutions: 8
   TransformFunctionPermissions:
     Type: AWS::Lambda::Permission
     Properties:
@@ -81,4 +112,18 @@ Resources:
       Name: 'String'
       Description: Provides various string processing functions
       FunctionName: !GetAtt TransformFunction.Arn
+Outputs:
+  S3Bucket:
+    Description: Bucket used by template.
+    Value: !Ref S3Bucket
+  SubnetId1:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda can use
+    Value: !Ref SubnetId1
+  SubnetId2:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda can use
+    Value: !Ref SubnetId2
+  SubnetId3:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda can use
+    Value: !Ref SubnetId3
+
 
