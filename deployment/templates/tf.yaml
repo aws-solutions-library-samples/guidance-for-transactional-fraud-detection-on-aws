@@ -393,7 +393,14 @@ Resources:
                 - timestream:WriteRecords
                 Resource: arn:aws:kms:::*
                 # Resource: '*'
-  
+  TFSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Symmetric key to be used for Timestream and Kinesis
+      Enabled: True
+      EnableKeyRotation: True
+      KeySpec: SYMMETRIC_DEFAULT
+
   Lambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -527,9 +534,11 @@ Resources:
             - ec2:DescribeInstances
             - ec2:AttachNetworkInterface
           Resource:
-          #- "arn:aws:timestream:*.*.*" #
+          #  - # arn:aws:kms:::*
+          # - "arn:aws:timestream:::*"
+          # - "arn:aws:ec2:::*"
+          # - "arn:aws::::*"
           - "*" # can't be restricted
-          #- "arn:aws:ec2:*.*.*"
         - Sid: VisualEditor1
           Effect: Allow
           Action: timestream:WriteRecords
