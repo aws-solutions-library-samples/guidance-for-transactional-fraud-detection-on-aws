@@ -1,6 +1,24 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Create a Timestream database and a tables and scheduled query
 Parameters:
+  SubnetId1:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda
+      function can use to access the Neptune cluster. (e.g. subnet1,subnet2)
+    Type: String
+  SubnetId2:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda
+      function can use to access the Neptune cluster. (e.g. subnet1,subnet2)
+    Type: String
+  SubnetId3:
+    Description: One or more Subnet IDs corresponding to the Subnet(s) that the Lambda
+      function can use to access the Neptune cluster. (e.g. subnet1,subnet2)
+    Type: String
+  VPCId:
+    Description: VPC ID
+    Type: String
+  SecurityGroup:
+    Type: String
+    Description: Security Group created in base template for reuse
   S3Prefix:
     Type: String
     Default: timestreamquery
@@ -379,6 +397,14 @@ Resources:
   Lambda:
     Type: AWS::Lambda::Function
     Properties:
+#      ReservedConcurrentExecutions: 200
+#      VpcConfig:
+#        SecurityGroupIds:
+#          - !Ref SecurityGroup
+#        SubnetIds:
+#          - !Ref SubnetId1
+#          - !Ref SubnetId2
+#          - !Ref SubnetId3
       Code:
         ZipFile: |
           import os
@@ -493,9 +519,17 @@ Resources:
         Version: "2012-10-17"
         Statement:
         - Effect: Allow
-          Action: timestream:DescribeEndpoints
+          Action:
+            - timestream:DescribeEndpoints
+            - ec2:DescribeNetworkInterfaces
+            - ec2:CreateNetworkInterface
+            - ec2:DeleteNetworkInterface
+            - ec2:DescribeInstances
+            - ec2:AttachNetworkInterface
           Resource:
+          #- "arn:aws:timestream:*.*.*" #
           - "*" # can't be restricted
+          #- "arn:aws:ec2:*.*.*"
         - Sid: VisualEditor1
           Effect: Allow
           Action: timestream:WriteRecords

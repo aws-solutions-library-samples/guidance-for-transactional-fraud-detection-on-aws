@@ -265,7 +265,7 @@ Resources:
         Value: SAM
       Architectures:
       - x86_64
-      ReservedConcurrentExecutions: 100
+      ReservedConcurrentExecutions: 200
   KinesisToNeptuneWriterRole:
     Type: AWS::IAM::Role
     Properties:

@@ -49,6 +49,13 @@ Parameters:
   S3Bucket:
     Type: String
     Description: Bucket where build assets are kept
+  EnableNFS:
+    Description: During debugging, select NFS to be created
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Type: String
   # DbInstanceType:
   #   Description: Neptune DB instance type
   #   Type: String
@@ -150,18 +157,30 @@ Parameters:
   # RouteTableId3:
   #   Description: OPTIONAL Route table Ids
   #   Type: String
+
+Conditions:
+  IsEnableNFS: !Equals
+    - !Ref EnableNFS
+    - 'true'
+
 Resources:
   GenericSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Used within Templates when needed
-      # VpcId: !Ref myVPC
+      VpcId: !Ref VPCId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/32
           Description: Web port
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+          Description: All ports
   CustomTransform:
     Type: AWS::CloudFormation::Stack
     DependsOn:
@@ -178,12 +197,13 @@ Resources:
   NFS:
   # Neptune Flow Setup
     Type: AWS::CloudFormation::Stack
-    DependsOn: 
+    Condition: IsEnableNFS
+    DependsOn:
       - CustomTransform
       - ES
     Properties:
       TemplateURL: !Sub "https://s3.amazonaws.com/${S3Bucket}/templates/nf.yaml"
-      TimeoutInMinutes: 60
+      TimeoutInMinutes: 120
       Parameters:
         KinesisArn: !GetAtt ES.Arn
         # DBClusterId: !Ref DBClusterId
@@ -206,15 +226,21 @@ Resources:
   TFS:
   # Timestream Flow Setup
     Type: AWS::CloudFormation::Stack
-    DependsOn: 
+    DependsOn:
       - CustomTransform
       - ES
     Properties:
       TemplateURL: !Sub "https://s3.amazonaws.com/${S3Bucket}/templates/tf.yaml"
-      TimeoutInMinutes: 60
+      TimeoutInMinutes: 120
       Parameters:
         KinesisStream: !Ref ES
         S3Bucket: !Ref S3Bucket
+        SubnetId1: !Ref SubnetId1
+        SubnetId2: !Ref SubnetId2
+        SubnetId3: !Ref SubnetId3
+        VPCId: !Ref VPCId
+        SecurityGroup: !Ref GenericSecurityGroup
+
   ES:
   # Event Stream
     Type: 'AWS::Kinesis::Stream'

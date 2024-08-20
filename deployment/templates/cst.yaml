@@ -47,15 +47,25 @@ Resources:
                 - logs:CreateLogStream
                 - logs:PutLogEvents
                 - logs:DescribeLogStreams
-                Resource: 'arn:aws:logs:*:*:*'
+                - ec2:DescribeNetworkInterfaces
+                - ec2:CreateNetworkInterface
+                - ec2:DeleteNetworkInterface
+                - ec2:DescribeInstances
+                - ec2:AttachNetworkInterface
+                Resource:
+                - "*"
+                #- 'arn:aws:logs:*:*:*'
+                #- 'arn:aws:ec2:*:*:*'
   TransformFunction:
     Type: AWS::Lambda::Function
     Properties:
-#      VpcConfig:
-#        SubnetIds:
-#        - !Ref SubnetId1
-#        - !Ref SubnetId2
-#        - !Ref SubnetId3
+      VpcConfig:
+        SecurityGroupIds:
+        - !Ref SecurityGroup
+        SubnetIds:
+        - !Ref SubnetId1
+        - !Ref SubnetId2
+        - !Ref SubnetId3
       Code:
         ZipFile: |
           import traceback
@@ -102,7 +112,7 @@ Resources:
       Handler: index.handler
       Runtime: python3.9
       Role: !GetAtt TransformExecutionRole.Arn
-      ReservedConcurrentExecutions: 8
+      ReservedConcurrentExecutions: 200
   TransformFunctionPermissions:
     Type: AWS::Lambda::Permission
     Properties:
