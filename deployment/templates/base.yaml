@@ -56,6 +56,13 @@ Parameters:
       - 'false'
     Default: 'false'
     Type: String
+  EnableCST:
+    Description: During debugging, select CST to be created
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Type: String
   # DbInstanceType:
   #   Description: Neptune DB instance type
   #   Type: String
@@ -162,6 +169,9 @@ Conditions:
   IsEnableNFS: !Equals
     - !Ref EnableNFS
     - 'true'
+  IsEnableCST: !Equals
+    - !Ref EnableCST
+    - 'true'
 
 Resources:
   GenericSecurityGroup:
@@ -183,6 +193,7 @@ Resources:
           Description: All ports
   CustomTransform:
     Type: AWS::CloudFormation::Stack
+    Condition: IsEnableCST
     DependsOn:
       - GenericSecurityGroup
     Properties:
@@ -227,7 +238,7 @@ Resources:
   # Timestream Flow Setup
     Type: AWS::CloudFormation::Stack
     DependsOn:
-      - CustomTransform
+    #  - CustomTransform
       - ES
     Properties:
       TemplateURL: !Sub "https://s3.amazonaws.com/${S3Bucket}/templates/tf.yaml"
