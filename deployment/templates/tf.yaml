@@ -311,12 +311,61 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
+              # S3
               - Effect: Allow
                 Action:
                   - s3:GetObject
                   - s3:GetObjectVersion
                   - s3:ListBucket
                 Resource: "*"
+              # KMS
+              - Effect: Allow
+                Action:
+                 - kms:Decrypt
+                Resource: "*"
+              # SNS
+              - Effect: Allow
+                Action:
+                 - sns:Publish
+                Resource: "*"
+              # Kinesis
+              - Effect: Allow
+                Action:
+                 - kinesis:Get*
+                 - kinesis:List*
+                 - kinesis:PutRecord
+                Resource: "*"
+              # Timestream
+              - Effect: Allow
+                Action:
+                  - timestream:describeEndpoints
+                  - timestream:Select
+                  - timestream:SelectValues
+                  - timestream:WriteRecords
+                  - timestream:DescribeTable
+                  - timestream:ListMeasures
+                  - timestream:ListTables
+                  - timestream:ListDatabases
+                  - timestream:CancelQuery
+                  - timestream:CreateTable
+                  - timestream:CreateDatabase
+                  - timestream:DescribeDatabase
+                  - timestream:DeleteTable
+                  - timestream:DeleteDatabase
+                  - timestream:UpdateTable
+                  - timestream:UpdateDatabase
+                Resource: "*"
+              # cloudwatch
+              - Effect: Allow
+                Action:
+                 - cloudwatch:List*
+                 - cloudwatch:Put*
+                 - cloudwatch:Get*
+                 - cloudwatch:Describe*
+                 - cloudwatch:Start*
+                 - cloudwatch:Stop*
+                Resource: "*"
+              # All Other
               - Effect: Allow
                 Action:
                  - s3:GetObject
