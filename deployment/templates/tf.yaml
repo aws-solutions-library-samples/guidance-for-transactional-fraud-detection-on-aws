@@ -422,7 +422,7 @@ Resources:
   TFSKey:
     Type: AWS::KMS::Key
     Properties:
-      Description: Symmetric key to be used for Timestream and Kinesis
+      Description: Symmetric key to be used for Timestream
       Enabled: True
       EnableKeyRotation: True
       KeySpec: SYMMETRIC_DEFAULT

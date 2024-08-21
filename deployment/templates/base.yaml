@@ -241,13 +241,43 @@ Resources:
         VPCId: !Ref VPCId
         SecurityGroup: !Ref GenericSecurityGroup
 
+  StreamKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Symmetric key to be used for Kinesis
+      Enabled: True
+      EnableKeyRotation: True
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+#              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+              AWS: !Sub '${AWS::AccountId}'
+#              AWS: "*"
+            Action:
+             - 'kms:*'
+             - 'kms:Encrypt'
+             - 'kms:Decrypt'
+             - 'kms:ReEncrypt*'
+             - 'kms:GenerateDataKey*'
+             - 'kms:CreateGrant'
+             - 'kms:ListGrants'
+             - 'kms:DescribeKey'
+            Resource: '*'
+
   ES:
   # Event Stream
     Type: 'AWS::Kinesis::Stream'
+    DependsOn: StreamKey
     Properties:
       Name: !Sub ${AWS::StackName}-EventStream
       RetentionPeriodHours: 24
       ShardCount: 1
+      StreamEncryption:
+        EncryptionType: KMS
+        KeyId: !Ref StreamKey
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-EventStream
