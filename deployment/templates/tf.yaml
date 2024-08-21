@@ -133,6 +133,8 @@ Resources:
 
   ScheduledQuerySNS:
     Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !Ref TFSKey
 
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -539,6 +541,7 @@ Resources:
       Layers:
         - !Sub "arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python39:5"
       MemorySize: 200
+      ReservedConcurrentExecutions: 200
       Role: !GetAtt LambdaRole.Arn
       Runtime: python3.9
       Timeout: 10
@@ -627,6 +630,7 @@ Resources:
         Role: !GetAtt StartApplicationLambdaRole.Arn
         Handler: index.lambda_handler
         Timeout: 30
+        ReservedConcurrentExecutions: 200
         Code:
           ZipFile: |
             import logging
