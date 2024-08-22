@@ -326,12 +326,15 @@ Resources:
               - Effect: Allow
                 Action:
                  - kms:Decrypt
-                Resource: "*"
+                Resource: ### "*"
+                  - !GetAtt TFSKey.Arn
               # SNS
               - Effect: Allow
                 Action:
                  - sns:Publish
-                Resource: "*"
+                Resource: ### "*"
+                  - !Ref ScheduledQuerySNS
+                  # - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:*'
               # Kinesis
               - Effect: Allow
                 Action:
