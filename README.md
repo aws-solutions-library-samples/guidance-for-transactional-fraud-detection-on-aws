@@ -193,4 +193,4 @@ Refer the blog https://aws.amazon.com/blogs/database/build-interactive-graph-dat
 
 ## Authors
 
-- Norbert Funke - AWS Senior Timestream Solutions Architect
+- **Norbert Funke** is a Sr. Timestream Specialist Solutions Architect at AWS based out of New York.
