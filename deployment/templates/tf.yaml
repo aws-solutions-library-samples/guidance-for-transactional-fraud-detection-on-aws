@@ -341,7 +341,8 @@ Resources:
                  - kinesis:Get*
                  - kinesis:List*
                  - kinesis:PutRecord
-                Resource: "*"
+                Resource: # "*"
+                  - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:*'
               # Timestream
               - Effect: Allow
                 Action:
