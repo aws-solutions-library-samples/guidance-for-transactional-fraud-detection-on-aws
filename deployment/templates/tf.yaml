@@ -364,7 +364,8 @@ Resources:
                  - cloudwatch:Describe*
                  - cloudwatch:Start*
                  - cloudwatch:Stop*
-                Resource: "*"
+                Resource: ### "*"
+                 - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
               # All Other
               - Effect: Allow
                 Action:
@@ -393,12 +394,12 @@ Resources:
                  - timestream:UpdateTable
                  - timestream:UpdateDatabase
                  - sts:assumeRole
-                 - cloudwatch:List*
-                 - cloudwatch:Put*
-                 - cloudwatch:Get*
-                 - cloudwatch:Describe*
-                 - cloudwatch:Start*
-                 - cloudwatch:Stop*
+#                 - cloudwatch:List*
+#                 - cloudwatch:Put*
+#                 - cloudwatch:Get*
+#                 - cloudwatch:Describe*
+#                 - cloudwatch:Start*
+#                 - cloudwatch:Stop*
                 Resource: "*"
 #                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
 #                  - !Sub 'arn:aws:s3::${AWS::AccountId}::*'
