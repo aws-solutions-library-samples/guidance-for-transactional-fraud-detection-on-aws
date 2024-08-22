@@ -354,7 +354,8 @@ Resources:
                   - timestream:DeleteDatabase
                   - timestream:UpdateTable
                   - timestream:UpdateDatabase
-                Resource: "*"
+                Resource: ### "*"
+                  - !Sub 'arn:aws:timestream:${AWS::Region}:${AWS::AccountId}::*'
               # cloudwatch
               - Effect: Allow
                 Action:
