@@ -386,9 +386,9 @@ Resources:
 #                 - kinesis:Get*
 #                 - kinesis:List*
 #                 - kinesis:PutRecord
-                 - timestream:describeEndpoints
-                 - timestream:Select
-                 - timestream:SelectValues
+                 - timestream:describeEndpoints # needed for resource "*"
+#                 - timestream:Select
+#                 - timestream:SelectValues
                  - timestream:WriteRecords
                  - timestream:DescribeTable
                  - timestream:ListMeasures
