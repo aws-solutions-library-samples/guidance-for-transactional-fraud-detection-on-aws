@@ -714,6 +714,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: tfs-lambda-dlq
+      KmsMasterKeyId: !Ref TFSKey
 
   StartApplicationLambda:
       Type: AWS::Lambda::Function
