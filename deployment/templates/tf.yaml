@@ -42,7 +42,40 @@ Resources:
       Region: !Ref "AWS::Region"
       ParamSendToLambda: !Ref Params
 
+  KinesisLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+
+  KinesisLogStream:
+    Type: AWS::Logs::LogStream
+    DependsOn: KinesisLogGroup
+    Properties:
+      # LogGroupName: !Sub "${AWS::StackName}_LogGroup"
+      LogGroupName: !Ref KinesisLogGroup
+      LogStreamName: "KinesisLogStream"
+
+  BasicApplicationV2CloudWatchLoggingOption:
+    Type: AWS::KinesisAnalyticsV2::ApplicationCloudWatchLoggingOption
+    Properties:
+      ApplicationName:
+        Ref: TimestreamApplication
+      CloudWatchLoggingOption:
+        # arn:aws:logs:us-east-1:265077468293:log-group:guidance-deploy-test-0823-TFS-BXTVINYNNXJC-KinesisLogGroup-rgtPXWJKtNCy:*
+        LogStreamARN: #!Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:KinesisLogGroup:log-stream:KinesisLogStream'
+          Fn::Join:
+            - ":"
+            - - arn:aws:logs
+              - !Ref AWS::Region
+              - !Ref AWS::AccountId
+              - log-group
+              - Ref: KinesisLogGroup
+              - log-stream
+              - Ref: KinesisLogStream
+
   TimestreamApplication:
+    DependsOn:
+      - KinesisLogStream
     Type: AWS::KinesisAnalyticsV2::Application
 #    Condition: EnableKinesis
     Properties:
@@ -50,6 +83,21 @@ Resources:
       ApplicationDescription: "KDA Flink Adapter"
       RuntimeEnvironment: "FLINK-1_15"
       ApplicationConfiguration:
+        FlinkApplicationConfiguration:
+          CheckpointConfiguration:
+            ConfigurationType: 'CUSTOM'
+            CheckpointingEnabled: True
+            CheckpointInterval: 1500
+            MinPauseBetweenCheckpoints: 500
+          MonitoringConfiguration:
+            ConfigurationType: 'CUSTOM'
+            MetricsLevel: 'APPLICATION'
+            LogLevel: 'INFO'
+          ParallelismConfiguration:
+            ConfigurationType: 'CUSTOM'
+            Parallelism: 4
+            ParallelismPerKPU: 4
+            AutoScalingEnabled: True
         ApplicationCodeConfiguration:
           CodeContent:
             S3ContentLocation:
@@ -306,6 +354,7 @@ Resources:
       Path: "/"
       ManagedPolicyArns:
         - !Sub "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        - !Sub "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
       Policies:
         - PolicyName: KinesisToTimeStream
           PolicyDocument:

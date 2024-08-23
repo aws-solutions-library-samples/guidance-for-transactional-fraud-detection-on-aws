@@ -37,18 +37,23 @@ Parameters:
   VPCId:
       Description: VPC ID
       Type: String
+      Default: vpc-03e1f4cf87fb8014c
   SubnetId1:
       Description: Subnet where Neptune will be created. Same subnet will be used for AWS Lambda VPC Configuration
       Type: String
+      Default: subnet-0ed0df40fb7ff3ab9
   SubnetId2:
     Description: Subnet where Neptune will be created. Same subnet will be used for AWS Lambda VPC Configuration
     Type: String
+    Default: subnet-0fe7ab2127a843d3c
   SubnetId3:
     Description: Subnet where Neptune will be created. Same subnet will be used for AWS Lambda VPC Configuration
     Type: String
+    Default: subnet-04debfc0b45c1466b
   S3Bucket:
     Type: String
     Description: Bucket where build assets are kept
+    Default: riskandfraudlogs-funknor-assets
   EnableNFS:
     Description: During debugging, select NFS to be created
     AllowedValues:
