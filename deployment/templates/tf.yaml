@@ -381,11 +381,11 @@ Resources:
 #                 - s3:GetObject
 #                 - s3:GetObjectVersion
 #                 - s3:ListBucket
-                 - kms:Decrypt
+                 - kms:Decrypt  # needs to be here for resource "*"
                  - sns:Publish
-                 - kinesis:Get*
-                 - kinesis:List*
-                 - kinesis:PutRecord
+#                 - kinesis:Get*
+#                 - kinesis:List*
+#                 - kinesis:PutRecord
                  - timestream:describeEndpoints
                  - timestream:Select
                  - timestream:SelectValues
