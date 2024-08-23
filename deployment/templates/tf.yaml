@@ -390,10 +390,10 @@ Resources:
 #                 - timestream:Select
 #                 - timestream:SelectValues
                  - timestream:WriteRecords
-                 - timestream:DescribeTable
-                 - timestream:ListMeasures
-                 - timestream:ListTables
-                 - timestream:ListDatabases
+#                 - timestream:DescribeTable
+#                 - timestream:ListMeasures
+#                 - timestream:ListTables
+#                 - timestream:ListDatabases
                  - timestream:CancelQuery
                  - timestream:CreateTable
                  - timestream:CreateDatabase
