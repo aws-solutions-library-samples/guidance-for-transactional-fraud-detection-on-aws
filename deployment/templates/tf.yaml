@@ -684,14 +684,36 @@ Resources:
                   - lambda.amazonaws.com
               Action:
                 - sts:AssumeRole
+#        PolicyDocument:
+#          Version: "2012-10-17"
+#          Statement:
+#           - Effect: Allow
+#             Action:
+#               - sqs:SendMessage
+#             Resource: !GetAtt LambdaDeadLetterQueue.Arn
+
+        #              # SNS
+#            - Effect: Allow
+#              Action:
+#               - sns:Publish
+#              Resource: ### "*"
+#                - !Ref ScheduledQuerySNS
         ManagedPolicyArns:
           - arn:aws:iam::aws:policy/AmazonKinesisAnalyticsFullAccess
           - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+          - arn:aws:iam::aws:policy/AmazonSQSFullAccess
         Path: /
+
+  LambdaDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: tfs-lambda-dlq
 
   StartApplicationLambda:
       Type: AWS::Lambda::Function
-      DependsOn: StartApplicationLambdaRole
+      DependsOn:
+        - StartApplicationLambdaRole
+        - ScheduledQuerySNS
       Properties:
         Description: Starts an application when invoked.
         Runtime: python3.8
@@ -699,6 +721,8 @@ Resources:
         Handler: index.lambda_handler
         Timeout: 30
         ReservedConcurrentExecutions: 200
+        DeadLetterConfig:
+          TargetArn: !GetAtt LambdaDeadLetterQueue.Arn
         Code:
           ZipFile: |
             import logging
