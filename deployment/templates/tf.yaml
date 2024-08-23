@@ -402,7 +402,7 @@ Resources:
                  - timestream:DeleteDatabase
                  - timestream:UpdateTable
                  - timestream:UpdateDatabase
-                 - sts:assumeRole
+#                 - sts:assumeRole
 #                 - cloudwatch:List*
 #                 - cloudwatch:Put*
 #                 - cloudwatch:Get*
