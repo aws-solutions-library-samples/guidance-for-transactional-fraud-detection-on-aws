@@ -378,9 +378,9 @@ Resources:
               # All Other
               - Effect: Allow
                 Action:
-                 - s3:GetObject
-                 - s3:GetObjectVersion
-                 - s3:ListBucket
+#                 - s3:GetObject
+#                 - s3:GetObjectVersion
+#                 - s3:ListBucket
                  - kms:Decrypt
                  - sns:Publish
                  - kinesis:Get*
