@@ -517,6 +517,8 @@ Resources:
 
   Lambda:
     Type: AWS::Lambda::Function
+    DependsOn:
+      - LambdaDeadLetterQueue
     Properties:
 #      ReservedConcurrentExecutions: 200
 #      VpcConfig:
@@ -610,7 +612,10 @@ Resources:
         - !Sub "arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python39:5"
       MemorySize: 200
       ReservedConcurrentExecutions: 200
+      DeadLetterConfig:
+        TargetArn: !GetAtt LambdaDeadLetterQueue.Arn
       Role: !GetAtt LambdaRole.Arn
+      KmsKeyArn: !GetAtt TFSKey.Arn
       Runtime: python3.9
       Timeout: 10
 
@@ -630,7 +635,8 @@ Resources:
               - "sts:AssumeRole"
       Path: "/"
       ManagedPolicyArns:
-      - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AmazonSQSFullAccess
       - !Ref LambdaPolicy
 
   LambdaPolicy:
@@ -713,7 +719,7 @@ Resources:
       Type: AWS::Lambda::Function
       DependsOn:
         - StartApplicationLambdaRole
-        - ScheduledQuerySNS
+        - LambdaDeadLetterQueue
       Properties:
         Description: Starts an application when invoked.
         Runtime: python3.8
