@@ -278,11 +278,40 @@ Resources:
           Principal:
             Service:
             - lambda.amazonaws.com
+      Policies:
+        - PolicyName: KinesisToNeptune
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # KMS all
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - kms:DescribeCustomKeyStores
+                  - kms:ListKeys
+                  - kms:DeleteCustomKeyStore
+                  - kms:GenerateRandom
+                  - kms:ListRetirableGrants
+                  - kms:UpdateCustomKeyStore
+                  - kms:ListAliases
+                  - kms:DisconnectCustomKeyStore
+                  - kms:CreateKey
+                  - kms:ConnectCustomKeyStore
+                  - kms:CreateCustomKeyStore"
+                Resource: "*"
+              # KMS keys
+              - Effect: Allow
+                Action:
+                  - kms:*
+                Resource:
+                  - "arn:aws:kms:*:265077468293:alias/*"
+                  - "arn:aws:kms:*:265077468293:key/*"
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       - arn:aws:iam::aws:policy/NeptuneFullAccess
       - arn:aws:iam::aws:policy/service-role/AWSLambdaKinesisExecutionRole
+      - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
       Tags:
       - Key: lambda:createdBy
         Value: SAM
