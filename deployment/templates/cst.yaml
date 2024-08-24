@@ -38,7 +38,8 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         - arn:aws:iam::aws:policy/AmazonSQSFullAccess
-#        - !Ref LambdaPolicy # from TF
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+      #        - !Ref LambdaPolicy # from TF
       Policies:
         - PolicyName: root
           PolicyDocument:
