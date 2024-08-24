@@ -45,7 +45,8 @@ Resources:
   KinesisLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      RetentionInDays: 7
+      RetentionInDays: 1
+      KmsKeyId: !GetAtt TFSKey.Arn
 
   KinesisLogStream:
     Type: AWS::Logs::LogStream
@@ -562,6 +563,16 @@ Resources:
              - 'kms:CreateGrant'
              - 'kms:ListGrants'
              - 'kms:DescribeKey'
+            Resource: '*'
+          - Effect: Allow
+            Principal:
+              Service: !Sub logs.${AWS::Region}.amazonaws.com
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt
+              - kms:GenerateDataKey
+              - kms:DescribeKey
             Resource: '*'
 
   Lambda:
