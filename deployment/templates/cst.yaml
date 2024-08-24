@@ -35,6 +35,10 @@ Resources:
               Service: [lambda.amazonaws.com]
             Action: ['sts:AssumeRole']
       Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+#        - !Ref LambdaPolicy # from TF
       Policies:
         - PolicyName: root
           PolicyDocument:
@@ -58,6 +62,8 @@ Resources:
                 #- 'arn:aws:ec2:*:*:*'
   TransformFunction:
     Type: AWS::Lambda::Function
+    DependsOn:
+      - LambdaDeadLetterQueueCST
     Properties:
       VpcConfig:
         SecurityGroupIds:
@@ -113,6 +119,8 @@ Resources:
       Runtime: python3.9
       Role: !GetAtt TransformExecutionRole.Arn
       ReservedConcurrentExecutions: 200
+      DeadLetterConfig:
+        TargetArn: !GetAtt LambdaDeadLetterQueueCST.Arn
   TransformFunctionPermissions:
     Type: AWS::Lambda::Permission
     Properties:
@@ -125,6 +133,40 @@ Resources:
       Name: 'String'
       Description: Provides various string processing functions
       FunctionName: !GetAtt TransformFunction.Arn
+
+  LambdaDeadLetterQueueCST:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: cst-lambda-dlq
+      KmsMasterKeyId: !Ref CSTKey
+
+  CSTKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Symmetric key to be used for CST
+      Enabled: True
+      EnableKeyRotation: True
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+#              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+              AWS: !Sub '${AWS::AccountId}'
+#              AWS: "*"
+            Action:
+             - 'kms:*'
+             - 'kms:Encrypt'
+             - 'kms:Decrypt'
+             - 'kms:ReEncrypt*'
+             - 'kms:GenerateDataKey*'
+             - 'kms:CreateGrant'
+             - 'kms:ListGrants'
+             - 'kms:DescribeKey'
+            Resource: '*'
+
+
 Outputs:
   S3Bucket:
     Description: Bucket used by template.
