@@ -68,6 +68,13 @@ Parameters:
       - 'false'
     Default: 'false'
     Type: String
+  EnableTFS:
+    Description: During debugging, select TFS to be created
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Type: String
   # DbInstanceType:
   #   Description: Neptune DB instance type
   #   Type: String
@@ -177,6 +184,9 @@ Conditions:
   IsEnableCST: !Equals
     - !Ref EnableCST
     - 'true'
+  IsEnableTFS: !Equals
+    - !Ref EnableTFS
+    - 'true'
 
 Resources:
   GenericSecurityGroup:
@@ -242,6 +252,7 @@ Resources:
   TFS:
   # Timestream Flow Setup
     Type: AWS::CloudFormation::Stack
+    Condition: IsEnableTFS
     DependsOn:
     #  - CustomTransform
       - ES
