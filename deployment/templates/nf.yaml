@@ -269,6 +269,7 @@ Resources:
       ReservedConcurrentExecutions: 200
       DeadLetterConfig:
         TargetArn: !GetAtt LambdaDeadLetterQueueNF.Arn
+      KmsKeyArn: !GetAtt NFKey.Arn
 
   KinesisToNeptuneWriterRole:
     Type: AWS::IAM::Role
