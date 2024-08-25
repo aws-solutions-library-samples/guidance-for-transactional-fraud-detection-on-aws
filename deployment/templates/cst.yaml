@@ -24,6 +24,7 @@ Parameters:
     Type: String
     Description: Security Group created in base template for reuse
 Resources:
+
   TransformExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -128,6 +129,8 @@ Resources:
       Action: 'lambda:InvokeFunction'
       FunctionName: !GetAtt TransformFunction.Arn
       Principal: 'cloudformation.amazonaws.com'
+      SourceAccount: !Ref 'AWS::AccountId'
+
   Transform:
     Type: AWS::CloudFormation::Macro
     Properties:
