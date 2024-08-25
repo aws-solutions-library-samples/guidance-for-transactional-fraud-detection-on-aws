@@ -220,7 +220,7 @@ Resources:
       ManagedPolicyArns:
       - !Ref SQPolicy
 
-  ScheduledQuery1:
+  ScheduledQueryHighValueAggregation:
     Type: AWS::Timestream::ScheduledQuery
     # Condition: EnableSQ
     DependsOn: CustomResource
@@ -257,7 +257,7 @@ Resources:
           TableName: !GetAtt HighValueAggregation.Name
           TimeColumn: "minute"
 
-  ScheduledQuery2:
+  ScheduledQueryFrequentAggregation:
     Type: AWS::Timestream::ScheduledQuery
     # Condition: EnableSQ
     DependsOn: CustomResource
@@ -580,14 +580,13 @@ Resources:
     DependsOn:
       - LambdaDeadLetterQueue
     Properties:
-#      ReservedConcurrentExecutions: 200
-#      VpcConfig:
-#        SecurityGroupIds:
-#          - !Ref SecurityGroup
-#        SubnetIds:
-#          - !Ref SubnetId1
-#          - !Ref SubnetId2
-#          - !Ref SubnetId3
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref SecurityGroup
+        SubnetIds:
+          - !Ref SubnetId1
+          - !Ref SubnetId2
+          - !Ref SubnetId3
       Code:
         ZipFile: |
           import os
