@@ -231,6 +231,7 @@ Resources:
     Type: AWS::Lambda::Function
     DependsOn:
     - NeptuneBaseStack
+    - LambdaDeadLetterQueueNF
     Properties:
       Code:
         S3Bucket: !Ref S3Bucket
@@ -266,6 +267,9 @@ Resources:
       Architectures:
       - x86_64
       ReservedConcurrentExecutions: 200
+      DeadLetterConfig:
+        TargetArn: !GetAtt LambdaDeadLetterQueueNF.Arn
+
   KinesisToNeptuneWriterRole:
     Type: AWS::IAM::Role
     Properties:
@@ -312,6 +316,7 @@ Resources:
       - arn:aws:iam::aws:policy/NeptuneFullAccess
       - arn:aws:iam::aws:policy/service-role/AWSLambdaKinesisExecutionRole
       - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+      - arn:aws:iam::aws:policy/AmazonSQSFullAccess # <<< Use this for DLQ
       Tags:
       - Key: lambda:createdBy
         Value: SAM
@@ -324,3 +329,37 @@ Resources:
       FunctionName:
         Ref: KinesisToNeptuneWriter
       StartingPosition: LATEST
+
+  LambdaDeadLetterQueueNF: # <<< use this for DLQ, note it has a key below
+    Type: AWS::SQS::Queue
+    DependsOn: NFKey # <<< might not need, but better with it
+    Properties:
+      QueueName: nf-lambda-dlq
+      KmsMasterKeyId: !Ref NFKey
+
+  NFKey: # <<< use this config for keys
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Symmetric key to be used for NF
+      Enabled: True
+      EnableKeyRotation: True
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              #              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+              AWS: !Sub '${AWS::AccountId}'
+            #              AWS: "*"
+            Action:
+              - 'kms:*'
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:CreateGrant'
+              - 'kms:ListGrants'
+              - 'kms:DescribeKey'
+            Resource: '*'
+
