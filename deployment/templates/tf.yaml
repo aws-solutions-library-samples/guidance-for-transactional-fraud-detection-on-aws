@@ -498,7 +498,12 @@ Resources:
                 - timestream:WriteRecords
                 # Resource: arn:aws:timestream:::database/*
                 # Resource: arn:aws:timestream:::database/kdaflink
-                Resource: '*'
+                Resource:
+                 # - '*'
+                  - "arn:aws:timestream:::database/*"
+                  - !Sub "arn:aws:s3:::${S3Bucket}"
+                  - !Ref ScheduledQuerySNS
+                  - !GetAtt TFSKey.Arn
         - PolicyName: S3ScheduledQueryPolicy # give a unique name to this policy
           PolicyDocument: # JSON policy document
             Version: '2012-10-17'
@@ -513,8 +518,8 @@ Resources:
                 - timestream:Select
                 - timestream:SelectValues
                 - timestream:WriteRecords
-                Resource: arn:aws:s3:::*
-
+                Resource: # arn:aws:s3:::*
+                - !Sub "arn:aws:s3:::${S3Bucket}"
         - PolicyName: SNSScheduledQueryPolicy # give a unique name to this policy
           PolicyDocument: # JSON policy document
             Version: '2012-10-17'
@@ -522,7 +527,8 @@ Resources:
               - Effect: Allow
                 Action:
                 - sns:Publish
-                Resource: '*'
+                Resource: # '*'
+                - !Ref ScheduledQuerySNS
         - PolicyName: KMSScheduledQueryPolicy # give a unique name to this policy
           PolicyDocument: # JSON policy document
             Version: '2012-10-17'
@@ -537,7 +543,8 @@ Resources:
                 - timestream:Select
                 - timestream:SelectValues
                 - timestream:WriteRecords
-                Resource: arn:aws:kms:::*
+                Resource: # arn:aws:kms:::* # worked commented out at 08/25
+                - !GetAtt TFSKey.Arn
                 # Resource: '*'
   TFSKey:
     Type: AWS::KMS::Key
