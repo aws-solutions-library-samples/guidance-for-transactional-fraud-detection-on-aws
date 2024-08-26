@@ -266,7 +266,7 @@ Resources:
         Value: SAM
       Architectures:
       - x86_64
-      ReservedConcurrentExecutions: 200
+      ReservedConcurrentExecutions: 64
       DeadLetterConfig:
         TargetArn: !GetAtt LambdaDeadLetterQueueNF.Arn
       KmsKeyArn: !GetAtt NFKey.Arn

@@ -35,10 +35,10 @@ Parameters:
     Description: Bucket where build assets are kept
     Default: riskandfraudlogs-assets
 Resources:
-  CustomResource:
+  CreateScheduledQuerySchemaCustomResource:
     Type: "Custom::CustomResource"
     Properties:
-      ServiceToken: !GetAtt Lambda.Arn
+      ServiceToken: !GetAtt CreateScheduledQuerySchemaLambda.Arn
       Region: !Ref "AWS::Region"
       ParamSendToLambda: !Ref Params
 
@@ -223,7 +223,7 @@ Resources:
   ScheduledQueryHighValueAggregation:
     Type: AWS::Timestream::ScheduledQuery
     # Condition: EnableSQ
-    DependsOn: CustomResource
+    DependsOn: CreateScheduledQuerySchemaCustomResource
     Properties:
       ErrorReportConfiguration:
         S3Configuration:
@@ -260,7 +260,7 @@ Resources:
   ScheduledQueryFrequentAggregation:
     Type: AWS::Timestream::ScheduledQuery
     # Condition: EnableSQ
-    DependsOn: CustomResource
+    DependsOn: CreateScheduledQuerySchemaCustomResource
     Properties:
       ErrorReportConfiguration:
         S3Configuration:
@@ -575,18 +575,18 @@ Resources:
               - kms:DescribeKey
             Resource: '*'
 
-  Lambda:
+  CreateScheduledQuerySchemaLambda:
     Type: AWS::Lambda::Function
     DependsOn:
       - LambdaDeadLetterQueue
     Properties:
-      VpcConfig:
-        SecurityGroupIds:
-          - !Ref SecurityGroup
-        SubnetIds:
-          - !Ref SubnetId1
-          - !Ref SubnetId2
-          - !Ref SubnetId3
+#      VpcConfig:
+#        SecurityGroupIds:
+#          - !Ref SecurityGroup
+#        SubnetIds:
+#          - !Ref SubnetId1
+#          - !Ref SubnetId2
+#          - !Ref SubnetId3
       Code:
         ZipFile: |
           import os
@@ -602,6 +602,7 @@ Resources:
           logger = logging.getLogger(__name__)
 
           def write_record():
+            print('-- calling write record function --')
             t = dt.datetime.now(dt.timezone.utc)
             df = pd.DataFrame([
                 {
@@ -619,8 +620,9 @@ Resources:
                     'value': uniform(1,10)
                 }
             ])
-
-            rejected_records = wr.timestream.write(
+            print('-- calling timestream write --')
+            try:
+              rejected_records = wr.timestream.write(
                 df,
                 database=os.environ['database'],
                 table=os.environ['table'],
@@ -628,10 +630,16 @@ Resources:
                 measure_col=['value', 'valueDummy'],
                 dimensions_cols=['account_num', 'merchant_num'],
                 measure_name='transaction'
-            )
-            result = len(rejected_records)
-            return result
-            
+              )
+              print('-- finish write record --')
+              result = len(rejected_records)
+              print(result)
+              print('-- return result -- rejected record above should be 0')
+              return result
+            except Exception as err:
+              print("Error:", err)
+              return(999)
+          
           def handler(event, context):
             print('----event---')
             print(event)
@@ -651,13 +659,24 @@ Resources:
               responseData = {}
               responseData['message'] = message
               logging.info('Sending %s to cloudformation', responseData['message'])
-              cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
-
+              print(response)
+              print('---- cfn sending response -- for creation of resource')
+              try:
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+              except Exception as err:
+                print("Error:", err)
+              print('---- cfn response sent -- for creation of resource')
             elif event.get('RequestType') == 'Delete':
               responseData = {}
               responseData['message'] = "Goodbye from lambda"
               logging.info('Sending %s to cloudformation', responseData['message'])
-              cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+              print(response)
+              print('---- cfn sending response -- for deletion of resource')
+              try:
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+              except Exception as err:
+                print("Error:", err)
+              print('---- cfn response sent -- for deletion of resource')
             else:
               logging.error('Unknown operation: %s', event.get('RequestType'))
 
@@ -670,13 +689,13 @@ Resources:
       Layers:
         - !Sub "arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python39:5"
       MemorySize: 200
-      ReservedConcurrentExecutions: 200
+      ReservedConcurrentExecutions: 16
       DeadLetterConfig:
         TargetArn: !GetAtt LambdaDeadLetterQueue.Arn
       Role: !GetAtt LambdaRole.Arn
       KmsKeyArn: !GetAtt TFSKey.Arn
       Runtime: python3.9
-      Timeout: 10
+      Timeout: 300
 
 
   LambdaRole:
@@ -725,6 +744,27 @@ Resources:
           Resource:
           - !Sub "arn:aws:timestream:${AWS::Region}:${AWS::AccountId}:database/${FraudDetectionDB}/table/${TransactionTable.Name}"
 
+  StartLambdaPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: "Allow timestream scheduled query"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Action:
+            - ec2:DescribeNetworkInterfaces
+            - ec2:CreateNetworkInterface
+            - ec2:DeleteNetworkInterface
+            - ec2:DescribeInstances
+            - ec2:AttachNetworkInterface
+          Resource:
+          #  - # arn:aws:kms:::*
+          # - "arn:aws:timestream:::*"
+          # - "arn:aws:ec2:::*"
+          # - "arn:aws::::*"
+          - "*" # can't be restricted
+
   StartApplicationLambdaInvoke:
     Description: Invokes StartApplicationLambda to start an application.
     Type: AWS::CloudFormation::CustomResource
@@ -749,30 +789,17 @@ Resources:
                   - lambda.amazonaws.com
               Action:
                 - sts:AssumeRole
-#        PolicyDocument:
-#          Version: "2012-10-17"
-#          Statement:
-#           - Effect: Allow
-#             Action:
-#               - sqs:SendMessage
-#             Resource: !GetAtt LambdaDeadLetterQueue.Arn
-
-        #              # SNS
-#            - Effect: Allow
-#              Action:
-#               - sns:Publish
-#              Resource: ### "*"
-#                - !Ref ScheduledQuerySNS
         ManagedPolicyArns:
           - arn:aws:iam::aws:policy/AmazonKinesisAnalyticsFullAccess
           - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
           - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+          - !Ref StartLambdaPolicy
         Path: /
 
   LambdaDeadLetterQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: tfs-lambda-dlq
+      QueueName: !Sub 'tfs-lambda-dlq-${AWS::StackName}'
       KmsMasterKeyId: !Ref TFSKey
 
   StartApplicationLambda:
@@ -786,7 +813,14 @@ Resources:
         Role: !GetAtt StartApplicationLambdaRole.Arn
         Handler: index.lambda_handler
         Timeout: 30
-        ReservedConcurrentExecutions: 200
+        ReservedConcurrentExecutions: 16
+#        VpcConfig:
+#          SecurityGroupIds:
+#            - !Ref SecurityGroup
+#          SubnetIds:
+#            - !Ref SubnetId1
+#            - !Ref SubnetId2
+#            - !Ref SubnetId3
         DeadLetterConfig:
           TargetArn: !GetAtt LambdaDeadLetterQueue.Arn
         Code:
