@@ -767,8 +767,9 @@ Resources:
           Action:
             - kms:Decrypt
           Resource:
-          - "*" # can't be restricted
-
+          # - "*" # can't be restricted
+            - !Ref StreamKeyArn
+            - !GetAtt TFSKey.Arn
 
   LambdaPolicy:
     Type: "AWS::IAM::ManagedPolicy"
