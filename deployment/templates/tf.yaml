@@ -791,7 +791,11 @@ Resources:
           # - "arn:aws:timestream:::*"
           # - "arn:aws:ec2:::*"
           # - "arn:aws::::*"
-          - "*" # can't be restricted
+          # DSR 08-28 - "*" # can't be restricted
+          - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
+          - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+          - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
+          - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:key-pair/*"
         - Sid: VisualEditor1
           Effect: Allow
           Action: timestream:WriteRecords
