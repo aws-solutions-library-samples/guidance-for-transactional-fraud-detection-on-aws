@@ -417,6 +417,11 @@ Resources:
                   - !Sub "arn:aws:timestream:${AWS::Region}:${AWS::AccountId}:database/*"
                   # - !Sub "arn:aws:timestream:${AWS::Region}::database/*"
                   - !Sub 'arn:aws:timestream:${AWS::Region}:${AWS::AccountId}::*'
+              # Timestream Endpoint see https://docs.aws.amazon.com/timestream/latest/developerguide/security_iam_service-with-iam.html
+              - Effect: Allow
+                Action:
+                  - timestream:describeEndpoints
+                Resource: "*"
               # cloudwatch
               - Effect: Allow
                 Action:
@@ -439,7 +444,7 @@ Resources:
 #                 - kinesis:Get*
 #                 - kinesis:List*
 #                 - kinesis:PutRecord
-                 - timestream:describeEndpoints # needed for resource "*"
+#                 - timestream:describeEndpoints # moved to own section above
 #                 - timestream:Select
 #                 - timestream:SelectValues
 #                 - timestream:WriteRecords # confimed not needed 08/27
