@@ -437,12 +437,12 @@ Resources:
                 Resource: ### "*"
                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
               # All Other
-# DSR 08-28              - Effect: Allow
-# DSR 08-28                Action:
+#               - Effect: Allow
+#                 Action:
 #                 - s3:GetObject
 #                 - s3:GetObjectVersion
 #                 - s3:ListBucket
-# DSR 08-28                 - kms:Decrypt  # (old) needs to be here for resource "*" revisit in 08/26 DEBUGGING, was here pre 08/26, same like all below not commented out
+#                 - kms:Decrypt  # (old) needs to be here for resource "*" revisit in 08/26 DEBUGGING, was here pre 08/26, same like all below not commented out
 #                 - sns:Publish # confirmed not needed 08/26
 #                 - kinesis:Get*
 #                 - kinesis:List*
@@ -470,7 +470,7 @@ Resources:
 #                 - cloudwatch:Describe*
 #                 - cloudwatch:Start*
 #                 - cloudwatch:Stop*
-# DSR 08-28                Resource: "*" ## DSR FAIL FIX ME 08-26 # next step: Step by step check all Actions above
+#                 Resource: "*" ## DSR FAIL FIX ME 08-26 # next step: Step by step check all Actions above
 #                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
 #                  - !Sub 'arn:aws:s3::${AWS::AccountId}::*'
 #                  - !Sub 'arn:aws:s3::::*'
@@ -734,6 +734,7 @@ Resources:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       - arn:aws:iam::aws:policy/AmazonSQSFullAccess
       - !Ref LambdaPolicy
+      - !Ref TimestreamEndpointPolicy
 
   TimestreamEndpointPolicy:
     Type: "AWS::IAM::ManagedPolicy"
@@ -771,7 +772,7 @@ Resources:
         Statement:
         - Effect: Allow
           Action:
-            - timestream:DescribeEndpoints
+#            - timestream:DescribeEndpoints
             - ec2:DescribeNetworkInterfaces
             - ec2:CreateNetworkInterface
             - ec2:DeleteNetworkInterface
