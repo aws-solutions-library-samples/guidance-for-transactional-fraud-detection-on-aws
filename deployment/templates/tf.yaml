@@ -77,6 +77,7 @@ Resources:
   TimestreamApplication:
     DependsOn:
       - KinesisLogStream
+      - TransactionTable
     Type: AWS::KinesisAnalyticsV2::Application
 #    Condition: EnableKinesis
     Properties:
@@ -446,8 +447,8 @@ Resources:
 #                 - timestream:ListMeasures
 #                 - timestream:ListTables
 #                 - timestream:ListDatabases
-                 - timestream:CancelQuery
-                 - timestream:CreateTable
+#                 - timestream:CancelQuery # confimed not needed 08/27
+#                 - timestream:CreateTable # confimed not needed 08/27
 #                 - timestream:CreateDatabase # confimed not needed 08/27
                  - timestream:DescribeDatabase
 #                 - timestream:DeleteTable # confimed not needed 08/27
