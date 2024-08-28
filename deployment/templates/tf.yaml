@@ -357,6 +357,8 @@ Resources:
       ManagedPolicyArns:
         - !Sub "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
         - !Sub "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+        - !Ref TimestreamEndpointPolicy
+        - !Ref KinesisKMSPolicy
       Policies:
         - PolicyName: KinesisToTimeStream
           PolicyDocument:
@@ -397,7 +399,7 @@ Resources:
               # Timestream
               - Effect: Allow
                 Action:
-                  - timestream:describeEndpoints
+#                  - timestream:describeEndpoints
                   - timestream:Select
                   - timestream:SelectValues
                   - timestream:WriteRecords
@@ -417,11 +419,12 @@ Resources:
                   - !Sub "arn:aws:timestream:${AWS::Region}:${AWS::AccountId}:database/*"
                   # - !Sub "arn:aws:timestream:${AWS::Region}::database/*"
                   - !Sub 'arn:aws:timestream:${AWS::Region}:${AWS::AccountId}::*'
-              # Timestream Endpoint see https://docs.aws.amazon.com/timestream/latest/developerguide/security_iam_service-with-iam.html
-              - Effect: Allow
-                Action:
-                  - timestream:describeEndpoints
-                Resource: "*"
+            #  # Timestream Endpoint see https://docs.aws.amazon.com/timestream/latest/developerguide/security_iam_service-with-iam.html
+            #  - Effect: Allow
+            #    Action:
+            #      - timestream:describeEndpoints
+            #    Resource: ## "*"
+            #      - !Sub "arn:aws:timestream:${AWS::Region}:${AWS::AccountId}:*"
               # cloudwatch
               - Effect: Allow
                 Action:
@@ -434,12 +437,12 @@ Resources:
                 Resource: ### "*"
                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
               # All Other
-              - Effect: Allow
-                Action:
+# DSR 08-28              - Effect: Allow
+# DSR 08-28                Action:
 #                 - s3:GetObject
 #                 - s3:GetObjectVersion
 #                 - s3:ListBucket
-                 - kms:Decrypt  # (old) needs to be here for resource "*" revisit in 08/26 DEBUGGING, was here pre 08/26, same like all below not commented out
+# DSR 08-28                 - kms:Decrypt  # (old) needs to be here for resource "*" revisit in 08/26 DEBUGGING, was here pre 08/26, same like all below not commented out
 #                 - sns:Publish # confirmed not needed 08/26
 #                 - kinesis:Get*
 #                 - kinesis:List*
@@ -467,7 +470,7 @@ Resources:
 #                 - cloudwatch:Describe*
 #                 - cloudwatch:Start*
 #                 - cloudwatch:Stop*
-                Resource: "*" ## DSR FAIL FIX ME 08-26 # next step: Step by step check all Actions above
+# DSR 08-28                Resource: "*" ## DSR FAIL FIX ME 08-26 # next step: Step by step check all Actions above
 #                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
 #                  - !Sub 'arn:aws:s3::${AWS::AccountId}::*'
 #                  - !Sub 'arn:aws:s3::::*'
@@ -731,6 +734,33 @@ Resources:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       - arn:aws:iam::aws:policy/AmazonSQSFullAccess
       - !Ref LambdaPolicy
+
+  TimestreamEndpointPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: "Allow timestream describe endpoints"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Action:
+            - timestream:DescribeEndpoints
+          Resource:
+          - "*" # can't be restricted
+
+  KinesisKMSPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: "Allow timestream describe endpoints"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Action:
+            - kms:Decrypt
+          Resource:
+          - "*" # can't be restricted
+
 
   LambdaPolicy:
     Type: "AWS::IAM::ManagedPolicy"
