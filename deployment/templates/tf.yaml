@@ -448,10 +448,10 @@ Resources:
 #                 - timestream:ListDatabases
                  - timestream:CancelQuery
                  - timestream:CreateTable
-                 - timestream:CreateDatabase
+#                 - timestream:CreateDatabase # confimed not needed 08/27
                  - timestream:DescribeDatabase
                  - timestream:DeleteTable
-                 - timestream:DeleteDatabase
+#                 - timestream:DeleteDatabase # confimed not needed 08/27
                  - timestream:UpdateTable
                  - timestream:UpdateDatabase
 #                 - sts:assumeRole
