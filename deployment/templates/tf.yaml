@@ -413,6 +413,8 @@ Resources:
                   - timestream:UpdateTable
                   - timestream:UpdateDatabase
                 Resource: ### "*"
+                  - !Sub "arn:aws:timestream:${AWS::Region}:${AWS::AccountId}:database/*"
+                  # - !Sub "arn:aws:timestream:${AWS::Region}::database/*"
                   - !Sub 'arn:aws:timestream:${AWS::Region}:${AWS::AccountId}::*'
               # cloudwatch
               - Effect: Allow
@@ -439,7 +441,7 @@ Resources:
                  - timestream:describeEndpoints # needed for resource "*"
 #                 - timestream:Select
 #                 - timestream:SelectValues
-                 - timestream:WriteRecords
+#                 - timestream:WriteRecords # confimed not needed 08/27
 #                 - timestream:DescribeTable
 #                 - timestream:ListMeasures
 #                 - timestream:ListTables
