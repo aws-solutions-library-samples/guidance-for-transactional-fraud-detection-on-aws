@@ -348,8 +348,9 @@ Resources:
             - !GetAtt FrequentAggregation.Arn
         - Effect: Allow
           Action:
-#            - kms:Decrypt
-            - kms:*
+            - kms:Decrypt
+            - kms:GenerateDataKey
+            # - kms:* verfied 08-28 "kms:*" not needed
           Resource:
             - !GetAtt TFSKey.Arn
 
