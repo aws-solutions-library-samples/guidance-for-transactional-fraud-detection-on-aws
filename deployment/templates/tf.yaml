@@ -450,10 +450,10 @@ Resources:
                  - timestream:CreateTable
 #                 - timestream:CreateDatabase # confimed not needed 08/27
                  - timestream:DescribeDatabase
-                 - timestream:DeleteTable
+#                 - timestream:DeleteTable # confimed not needed 08/27
 #                 - timestream:DeleteDatabase # confimed not needed 08/27
-                 - timestream:UpdateTable
-                 - timestream:UpdateDatabase
+#                 - timestream:UpdateTable # confimed not needed 08/27
+#                 - timestream:UpdateDatabase # confimed not needed 08/27
 #                 - sts:assumeRole
 #                 - cloudwatch:List*
 #                 - cloudwatch:Put*
