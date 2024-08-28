@@ -227,6 +227,7 @@ Resources:
       Path: "/"
       ManagedPolicyArns:
       - !Ref SQPolicy
+      - !Ref TimestreamEndpointPolicy
 
   ScheduledQueryHighValueAggregation:
     Type: AWS::Timestream::ScheduledQuery
@@ -326,10 +327,13 @@ Resources:
           Resource: !Sub "arn:aws:s3:::${S3Bucket}/*"
         - Effect: Allow
           Action:
-            - timestream:DescribeEndpoints
+# DSR 08-28            - timestream:DescribeEndpoints
             - timestream:SelectValues
           Resource:
-            - "*" # cannot be restricted
+                  - !Sub "arn:aws:timestream:${AWS::Region}:${AWS::AccountId}:database/*"
+                  # - !Sub "arn:aws:timestream:${AWS::Region}::database/*"
+                  - !Sub 'arn:aws:timestream:${AWS::Region}:${AWS::AccountId}::*'
+# DSR 08-28            - "_" # cannot be restricted
         - Effect: Allow
           Action:
             - timestream:Select
@@ -344,6 +348,7 @@ Resources:
             - !GetAtt FrequentAggregation.Arn
         - Effect: Allow
           Action:
+#            - kms:Decrypt
             - kms:*
           Resource:
             - !GetAtt TFSKey.Arn
@@ -791,12 +796,12 @@ Resources:
           # - "arn:aws:timestream:::*"
           # - "arn:aws:ec2:::*"
           # - "arn:aws::::*"
-          # DSR 08-28 - "*" # can't be restricted
+          # - "*" # can't be restricted
           - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
           - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
           - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
           - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:key-pair/*"
-        - Sid: VisualEditor1
+        - Sid: WriteToTimestream
           Effect: Allow
           Action: timestream:WriteRecords
           Resource:
@@ -817,11 +822,15 @@ Resources:
             - ec2:DescribeInstances
             - ec2:AttachNetworkInterface
           Resource:
+          - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
+          - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+          - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
+          - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:key-pair/*"
           #  - # arn:aws:kms:::*
           # - "arn:aws:timestream:::*"
           # - "arn:aws:ec2:::*"
           # - "arn:aws::::*"
-          - "*" # can't be restricted
+          # - "*" # 08-28 verified, not needed anymore
 
   StartApplicationLambdaInvoke:
     Description: Invokes StartApplicationLambda to start an application.
