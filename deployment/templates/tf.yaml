@@ -23,24 +23,31 @@ Parameters:
     Type: String
     Default: timestreamquery
     Description: Prefix to save scheduled query errors. Timestream will append a slash
-  Params:
-    Description: Params send to custom resource
-    Type: String
-    Default: "arg1,arg2,arg3"
+#  Params:
+#    Description: Params send to custom resource
+#    Type: String
+#    Default: "arg1,arg2,arg3"
   KinesisStream:
     Type: String
-    Description: Name of the stream
+    Description: Id of the stream
   S3Bucket:
     Type: String
     Description: Bucket where build assets are kept
     Default: riskandfraudlogs-assets
+  StreamKey:
+    Type: String
+    Description: KMS key used for encryption in Kinesis stream
+  StreamKeyArn:
+    Type: String
+    Description: ARN for KMS key used for encryption in Kinesis stream
+
 Resources:
   CreateScheduledQuerySchemaCustomResource:
     Type: "Custom::CustomResource"
     Properties:
       ServiceToken: !GetAtt CreateScheduledQuerySchemaLambda.Arn
       Region: !Ref "AWS::Region"
-      ParamSendToLambda: !Ref Params
+      # ParamSendToLambda: !Ref Params
 
   KinesisLogGroup:
     Type: AWS::Logs::LogGroup

@@ -267,6 +267,8 @@ Resources:
         SubnetId3: !Ref SubnetId3
         VPCId: !Ref VPCId
         SecurityGroup: !Ref GenericSecurityGroup
+        StreamKey: !Ref StreamKey
+        StreamKeyArn: !GetAtt StreamKey.Arn
 
   StreamKey:
     Type: AWS::KMS::Key
