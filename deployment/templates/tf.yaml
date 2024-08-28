@@ -450,7 +450,7 @@ Resources:
 #                 - timestream:CancelQuery # confimed not needed 08/27
 #                 - timestream:CreateTable # confimed not needed 08/27
 #                 - timestream:CreateDatabase # confimed not needed 08/27
-                 - timestream:DescribeDatabase
+#                 - timestream:DescribeDatabase # confimed not needed 08/27
 #                 - timestream:DeleteTable # confimed not needed 08/27
 #                 - timestream:DeleteDatabase # confimed not needed 08/27
 #                 - timestream:UpdateTable # confimed not needed 08/27
