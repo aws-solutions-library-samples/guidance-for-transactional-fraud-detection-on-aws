@@ -111,6 +111,9 @@ Parameters:
       for the encrypted DB cluster.'
     Type: String
     Default: ''
+  StreamKeyArn:
+    Type: String
+    Description: ARN for KMS key used for encryption in Kinesis stream
   NotebookInstanceType:
     Description: SageMaker Notebook instance type. Please refer https://aws.amazon.com/sagemaker/pricing/
       for uptodate allowed instance type in aws region and https://aws.amazon.com/neptune/pricing/

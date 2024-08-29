@@ -249,6 +249,8 @@ Resources:
         SubnetId3: !Ref SubnetId3
         VPCId: !Ref VPCId
         S3Bucket: !Ref S3Bucket
+        StreamKeyArn: !GetAtt StreamKey.Arn
+
   TFS:
   # Timestream Flow Setup
     Type: AWS::CloudFormation::Stack
