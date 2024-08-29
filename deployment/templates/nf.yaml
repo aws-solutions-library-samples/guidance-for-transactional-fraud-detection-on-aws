@@ -306,7 +306,7 @@ Resources:
                   - kms:CreateKey
                   - kms:ConnectCustomKeyStore
                   - kms:CreateCustomKeyStore"
-                Resource: # "*"
+                Resource:
                   - !GetAtt NFKey.Arn
                   - !Ref StreamKeyArn
                   - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/*"
@@ -315,7 +315,6 @@ Resources:
               # KMS keys
               - Effect: Allow
                 Action:
-#                  - kms:*
                   - kms:Decrypt
                   - kms:GenerateDataKey
                 Resource:
@@ -345,7 +344,7 @@ Resources:
 
   LambdaDeadLetterQueueNF: # <<< use this for DLQ, note it has a key below
     Type: AWS::SQS::Queue
-    DependsOn: NFKey # <<< might not need, but better with it
+    DependsOn: NFKey
     Properties:
       QueueName: nf-lambda-dlq
       KmsMasterKeyId: !Ref NFKey
@@ -362,9 +361,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              #              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
               AWS: !Sub '${AWS::AccountId}'
-            #              AWS: "*"
             Action:
               - 'kms:*'
               - 'kms:Encrypt'

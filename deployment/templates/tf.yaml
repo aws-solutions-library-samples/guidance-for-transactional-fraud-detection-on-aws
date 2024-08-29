@@ -23,10 +23,6 @@ Parameters:
     Type: String
     Default: timestreamquery
     Description: Prefix to save scheduled query errors. Timestream will append a slash
-#  Params:
-#    Description: Params send to custom resource
-#    Type: String
-#    Default: "arg1,arg2,arg3"
   KinesisStream:
     Type: String
     Description: Id of the stream
@@ -47,7 +43,6 @@ Resources:
     Properties:
       ServiceToken: !GetAtt CreateScheduledQuerySchemaLambda.Arn
       Region: !Ref "AWS::Region"
-      # ParamSendToLambda: !Ref Params
 
   KinesisLogGroup:
     Type: AWS::Logs::LogGroup
@@ -59,7 +54,6 @@ Resources:
     Type: AWS::Logs::LogStream
     DependsOn: KinesisLogGroup
     Properties:
-      # LogGroupName: !Sub "${AWS::StackName}_LogGroup"
       LogGroupName: !Ref KinesisLogGroup
       LogStreamName: "KinesisLogStream"
 
@@ -69,7 +63,6 @@ Resources:
       ApplicationName:
         Ref: TimestreamApplication
       CloudWatchLoggingOption:
-        # arn:aws:logs:us-east-1:265077468293:log-group:guidance-deploy-test-0823-TFS-BXTVINYNNXJC-KinesisLogGroup-rgtPXWJKtNCy:*
         LogStreamARN: #!Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:KinesisLogGroup:log-stream:KinesisLogStream'
           Fn::Join:
             - ":"
@@ -86,7 +79,6 @@ Resources:
       - KinesisLogStream
       - TransactionTable
     Type: AWS::KinesisAnalyticsV2::Application
-#    Condition: EnableKinesis
     Properties:
       ApplicationName: !Sub "${AWS::StackName}_Application"
       ApplicationDescription: "KDA Flink Adapter"
@@ -231,7 +223,6 @@ Resources:
 
   ScheduledQueryHighValueAggregation:
     Type: AWS::Timestream::ScheduledQuery
-    # Condition: EnableSQ
     DependsOn: CreateScheduledQuerySchemaCustomResource
     Properties:
       ErrorReportConfiguration:
@@ -268,7 +259,6 @@ Resources:
 
   ScheduledQueryFrequentAggregation:
     Type: AWS::Timestream::ScheduledQuery
-    # Condition: EnableSQ
     DependsOn: CreateScheduledQuerySchemaCustomResource
     Properties:
       ErrorReportConfiguration:
@@ -327,13 +317,10 @@ Resources:
           Resource: !Sub "arn:aws:s3:::${S3Bucket}/*"
         - Effect: Allow
           Action:
-# DSR 08-28            - timestream:DescribeEndpoints
             - timestream:SelectValues
           Resource:
                   - !Sub "arn:aws:timestream:${AWS::Region}:${AWS::AccountId}:database/*"
-                  # - !Sub "arn:aws:timestream:${AWS::Region}::database/*"
                   - !Sub 'arn:aws:timestream:${AWS::Region}:${AWS::AccountId}::*'
-# DSR 08-28            - "_" # cannot be restricted
         - Effect: Allow
           Action:
             - timestream:Select
@@ -341,7 +328,7 @@ Resources:
             - !GetAtt TransactionTable.Arn
         - Effect: Allow
           Action:
-            - timestream:Select # is this required?
+            - timestream:Select
             - timestream:WriteRecords
           Resource:
             - !GetAtt HighValueAggregation.Arn
@@ -350,7 +337,6 @@ Resources:
           Action:
             - kms:Decrypt
             - kms:GenerateDataKey
-            # - kms:* verfied 08-28 "kms:*" not needed
           Resource:
             - !GetAtt TFSKey.Arn
 
@@ -383,36 +369,32 @@ Resources:
                   - s3:GetObject
                   - s3:GetObjectVersion
                   - s3:ListBucket
-                Resource: ### "*"
-#                  - !Sub 'arn:aws:s3:${AWS::Region}:${AWS::AccountId}::*'
-#                  - !Sub 'arn:aws:s3::${AWS::AccountId}::*'
+                Resource:
                   - !Sub 'arn:aws:s3:::${S3Bucket}'
                   - !Sub 'arn:aws:s3:::${S3Bucket}/*'
               # KMS
               - Effect: Allow
                 Action:
                  - kms:Decrypt
-                Resource: ### "*"
+                Resource:
                   - !GetAtt TFSKey.Arn
               # SNS
               - Effect: Allow
                 Action:
                  - sns:Publish
-                Resource: ### "*"
+                Resource:
                   - !Ref ScheduledQuerySNS
-                  # - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:*'
               # Kinesis
               - Effect: Allow
                 Action:
                  - kinesis:Get*
                  - kinesis:List*
                  - kinesis:PutRecord
-                Resource: # "*"
+                Resource:
                   - !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:*'
               # Timestream
               - Effect: Allow
                 Action:
-#                  - timestream:describeEndpoints
                   - timestream:Select
                   - timestream:SelectValues
                   - timestream:WriteRecords
@@ -428,16 +410,9 @@ Resources:
                   - timestream:DeleteDatabase
                   - timestream:UpdateTable
                   - timestream:UpdateDatabase
-                Resource: ### "*"
+                Resource:
                   - !Sub "arn:aws:timestream:${AWS::Region}:${AWS::AccountId}:database/*"
-                  # - !Sub "arn:aws:timestream:${AWS::Region}::database/*"
                   - !Sub 'arn:aws:timestream:${AWS::Region}:${AWS::AccountId}::*'
-            #  # Timestream Endpoint see https://docs.aws.amazon.com/timestream/latest/developerguide/security_iam_service-with-iam.html
-            #  - Effect: Allow
-            #    Action:
-            #      - timestream:describeEndpoints
-            #    Resource: ## "*"
-            #      - !Sub "arn:aws:timestream:${AWS::Region}:${AWS::AccountId}:*"
               # cloudwatch
               - Effect: Allow
                 Action:
@@ -447,46 +422,8 @@ Resources:
                  - cloudwatch:Describe*
                  - cloudwatch:Start*
                  - cloudwatch:Stop*
-                Resource: ### "*"
+                Resource:
                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
-              # All Other
-#               - Effect: Allow
-#                 Action:
-#                 - s3:GetObject
-#                 - s3:GetObjectVersion
-#                 - s3:ListBucket
-#                 - kms:Decrypt  # (old) needs to be here for resource "*" revisit in 08/26 DEBUGGING, was here pre 08/26, same like all below not commented out
-#                 - sns:Publish # confirmed not needed 08/26
-#                 - kinesis:Get*
-#                 - kinesis:List*
-#                 - kinesis:PutRecord
-#                 - timestream:describeEndpoints # moved to own section above
-#                 - timestream:Select
-#                 - timestream:SelectValues
-#                 - timestream:WriteRecords # confimed not needed 08/27
-#                 - timestream:DescribeTable
-#                 - timestream:ListMeasures
-#                 - timestream:ListTables
-#                 - timestream:ListDatabases
-#                 - timestream:CancelQuery # confimed not needed 08/27
-#                 - timestream:CreateTable # confimed not needed 08/27
-#                 - timestream:CreateDatabase # confimed not needed 08/27
-#                 - timestream:DescribeDatabase # confimed not needed 08/27
-#                 - timestream:DeleteTable # confimed not needed 08/27
-#                 - timestream:DeleteDatabase # confimed not needed 08/27
-#                 - timestream:UpdateTable # confimed not needed 08/27
-#                 - timestream:UpdateDatabase # confimed not needed 08/27
-#                 - sts:assumeRole
-#                 - cloudwatch:List*
-#                 - cloudwatch:Put*
-#                 - cloudwatch:Get*
-#                 - cloudwatch:Describe*
-#                 - cloudwatch:Start*
-#                 - cloudwatch:Stop*
-#                 Resource: "*" ## DSR FAIL FIX ME 08-26 # next step: Step by step check all Actions above
-#                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
-#                  - !Sub 'arn:aws:s3::${AWS::AccountId}::*'
-#                  - !Sub 'arn:aws:s3::::*'
 
   ScheduleQueryRole:
     Type: 'AWS::IAM::Role'
@@ -520,10 +457,7 @@ Resources:
                 - timestream:Select
                 - timestream:SelectValues
                 - timestream:WriteRecords
-                # Resource: arn:aws:timestream:::database/*
-                # Resource: arn:aws:timestream:::database/kdaflink
                 Resource:
-                 # - '*'
                   - "arn:aws:timestream:::database/*"
                   - !Sub "arn:aws:s3:::${S3Bucket}"
                   - !Ref ScheduledQuerySNS
@@ -542,7 +476,7 @@ Resources:
                 - timestream:Select
                 - timestream:SelectValues
                 - timestream:WriteRecords
-                Resource: # arn:aws:s3:::*
+                Resource:
                 - !Sub "arn:aws:s3:::${S3Bucket}"
         - PolicyName: SNSScheduledQueryPolicy # give a unique name to this policy
           PolicyDocument: # JSON policy document
@@ -567,9 +501,8 @@ Resources:
                 - timestream:Select
                 - timestream:SelectValues
                 - timestream:WriteRecords
-                Resource: # arn:aws:kms:::* # worked commented out at 08/25
+                Resource:
                 - !GetAtt TFSKey.Arn
-                # Resource: '*'
   TFSKey:
     Type: AWS::KMS::Key
     Properties:
@@ -582,9 +515,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-#              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
               AWS: !Sub '${AWS::AccountId}'
-#              AWS: "*"
             Action:
              - 'kms:*'
              - 'kms:Encrypt'
@@ -728,7 +659,6 @@ Resources:
       Runtime: python3.9
       Timeout: 300
 
-
   LambdaRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -765,7 +695,7 @@ Resources:
   KinesisKMSPolicy:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
-      Description: "Allow timestream describe endpoints"
+      Description: "Allow KMS encryption"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -773,7 +703,6 @@ Resources:
           Action:
             - kms:Decrypt
           Resource:
-          # - "*" # can't be restricted
             - !Ref StreamKeyArn
             - !GetAtt TFSKey.Arn
 
@@ -786,18 +715,12 @@ Resources:
         Statement:
         - Effect: Allow
           Action:
-#            - timestream:DescribeEndpoints
             - ec2:DescribeNetworkInterfaces
             - ec2:CreateNetworkInterface
             - ec2:DeleteNetworkInterface
             - ec2:DescribeInstances
             - ec2:AttachNetworkInterface
           Resource:
-          #  - # arn:aws:kms:::*
-          # - "arn:aws:timestream:::*"
-          # - "arn:aws:ec2:::*"
-          # - "arn:aws::::*"
-          # - "*" # can't be restricted
           - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
           - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
           - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
@@ -827,11 +750,6 @@ Resources:
           - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
           - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
           - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:key-pair/*"
-          #  - # arn:aws:kms:::*
-          # - "arn:aws:timestream:::*"
-          # - "arn:aws:ec2:::*"
-          # - "arn:aws::::*"
-          # - "*" # 08-28 verified, not needed anymore
 
   StartApplicationLambdaInvoke:
     Description: Invokes StartApplicationLambda to start an application.

@@ -40,14 +40,12 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         - arn:aws:iam::aws:policy/AmazonSQSFullAccess # <<< Use this for DLQ
         - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess  # <<< Use this for logging
-      #        - !Ref LambdaPolicy # from TF
       Policies:
         - PolicyName: root
           PolicyDocument:
             Version: 2012-10-17
             Statement:
               - Effect: Allow
-                # Action: ['logs:*']
                 Action:
                 - logs:CreateLogGroup
                 - logs:CreateLogStream
@@ -59,10 +57,7 @@ Resources:
                 - ec2:DescribeInstances
                 - ec2:AttachNetworkInterface
                 Resource:
-                # - "*"
                 - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
-                #- 'arn:aws:logs:*:*:*'
-                #- 'arn:aws:ec2:*:*:*'
                 - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
                 - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
@@ -145,7 +140,7 @@ Resources:
 
   LambdaDeadLetterQueueCST: # <<< use this for DLQ, note it has a key below
     Type: AWS::SQS::Queue
-    DependsOn: CSTKey # <<< might not need, but better with it
+    DependsOn: CSTKey
     Properties:
       QueueName: cst-lambda-dlq
       KmsMasterKeyId: !Ref CSTKey
@@ -162,9 +157,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-#              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
               AWS: !Sub '${AWS::AccountId}'
-#              AWS: "*"
             Action:
              - 'kms:*'
              - 'kms:Encrypt'
