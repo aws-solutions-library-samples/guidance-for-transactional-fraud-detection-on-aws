@@ -310,10 +310,12 @@ Resources:
               # KMS keys
               - Effect: Allow
                 Action:
-                  - kms:*
+#                  - kms:*
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
                 Resource:
-                  - "arn:aws:kms:*:265077468293:alias/*"
-                  - "arn:aws:kms:*:265077468293:key/*"
+                  - !GetAtt NFKey.Arn
+                  - !Ref StreamKeyArn
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
