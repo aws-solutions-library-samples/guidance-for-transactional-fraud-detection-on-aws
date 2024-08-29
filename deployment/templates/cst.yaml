@@ -59,21 +59,26 @@ Resources:
                 - ec2:DescribeInstances
                 - ec2:AttachNetworkInterface
                 Resource:
-                - "*"
+                # - "*"
+                - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
                 #- 'arn:aws:logs:*:*:*'
                 #- 'arn:aws:ec2:*:*:*'
+                - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
+                - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
+                - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:key-pair/*"
   TransformFunction:
     Type: AWS::Lambda::Function
     DependsOn:
       - LambdaDeadLetterQueueCST
     Properties:
-      VpcConfig:
-        SecurityGroupIds:
-        - !Ref SecurityGroup
-        SubnetIds:
-        - !Ref SubnetId1
-        - !Ref SubnetId2
-        - !Ref SubnetId3
+#      VpcConfig:
+#        SecurityGroupIds:
+#        - !Ref SecurityGroup
+#        SubnetIds:
+#        - !Ref SubnetId1
+#        - !Ref SubnetId2
+#        - !Ref SubnetId3
       Code:
         ZipFile: |
           import traceback

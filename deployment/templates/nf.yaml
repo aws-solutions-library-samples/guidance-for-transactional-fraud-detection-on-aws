@@ -316,6 +316,8 @@ Resources:
                 Resource:
                   - !GetAtt NFKey.Arn
                   - !Ref StreamKeyArn
+                  - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/*"
+                  - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*"
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
