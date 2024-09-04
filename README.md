@@ -54,10 +54,10 @@ deploying the solution and running a transaction simulation the provided shell s
 
 ### AWS account requirements
 
-This deployment requires to have a VPC with 3 subnets available and the following resources:
+This deployment requires to the following resources:
 
-- S3 bucket for uploading deployment artifacts and output reports
-- VPC
+- A S3 bucket for uploading deployment artifacts and output reports
+- 1 VPC
 - 3 Subnets
 - Optional: If using **Amazon Athena** (not required), VPC needs connection to **Amazon Glue** Endpoint as described in [Configuring interface VPC endpoints (AWS PrivateLink) for AWS Glue (AWS PrivateLink)](https://docs.aws.amazon.com/glue/latest/dg/vpc-interface-endpoints.html)
 
