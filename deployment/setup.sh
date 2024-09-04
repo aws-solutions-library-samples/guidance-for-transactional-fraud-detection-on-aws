@@ -28,7 +28,7 @@ rm -r target/source/kinesistotimestreamwriter
 
 cftemplates=('glue' 'cst' 'nfexisting' 'nf' 'tf' 'ac' 'base')
 
-mkdir -p target/templates
+mkdir -p target
 # for cftemplate in "${cftemplates[@]}"; do
 #     echo aws cloudformation package --template-file ./deployment/templates/${cftemplate}.yaml --s3-bucket $1 --output-template-file ./target/templates/${cftemplate}.yaml
 #     aws cloudformation package --template-file ./deployment/templates/${cftemplate}.yaml --s3-bucket $1 --output-template-file ./target/templates/${cftemplate}.yaml
