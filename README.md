@@ -23,7 +23,9 @@ This solution will demonstrate the use of Timestream to monitor micro-level frau
 
 ### Cost
 
-_You are responsible for the cost of the AWS services used while running this Guidance. As of August 2024, the cost for running this Guidance with the default settings in the <Default AWS Region US East (N. Virginia) > is approximately $800.00._
+_You are responsible for the cost of the AWS services used while running this Guidance. 
+As of August 2024, the cost for running this Guidance with the default settings in the 
+AWS Region US East (N. Virginia) is approximately $800.00._
 
 _We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this Guidance._
 
