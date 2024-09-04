@@ -3,3 +3,5 @@
 source/.DS_Store
 /source/kinesistotimestreamwriter/.idea
 *.iml
+source/kinesistotimestreamwriter/.DS_Store
+/source/kinesistotimestreamwriter/target
