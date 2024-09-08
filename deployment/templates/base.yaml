@@ -229,12 +229,12 @@ Resources:
     Condition: ProvisionNFS
     DependsOn:
       - CustomTransform
-      - ES
+      - TransactionEventsKinesisStream
     Properties:
       TemplateURL: !Sub "https://s3.amazonaws.com/${S3Bucket}/templates/nf.yaml"
       TimeoutInMinutes: 120
       Parameters:
-        KinesisArn: !GetAtt ES.Arn
+        KinesisArn: !GetAtt TransactionEventsKinesisStream.Arn
         # DBClusterId: !Ref DBClusterId
         # DbInstanceType: !Ref DbInstanceType
         # MinNCUs: !Ref MinNCUs
@@ -260,12 +260,12 @@ Resources:
     Condition: IsEnableTFS
     DependsOn:
     #  - CustomTransform
-      - ES
+      - TransactionEventsKinesisStream
     Properties:
       TemplateURL: !Sub "https://s3.amazonaws.com/${S3Bucket}/templates/tf.yaml"
       TimeoutInMinutes: 120
       Parameters:
-        KinesisStream: !Ref ES
+        KinesisStream: !Ref TransactionEventsKinesisStream
         S3Bucket: !Ref S3Bucket
         SubnetId1: !Ref SubnetId1
         SubnetId2: !Ref SubnetId2
@@ -299,7 +299,7 @@ Resources:
              - 'kms:DescribeKey'
             Resource: '*'
 
-  ES:
+  TransactionEventsKinesisStream:
   # Event Stream
     Type: 'AWS::Kinesis::Stream'
     DependsOn: StreamKey
@@ -313,3 +313,8 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-EventStream
+
+Outputs:
+  TransactionEventsKinesisStream:
+    Description: Kinesis Stream to send data to from producer
+    Value: !Ref TransactionEventsKinesisStream
