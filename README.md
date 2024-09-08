@@ -15,7 +15,10 @@
 
 ## Overview
 
-This solution will demonstrate the use of Timestream to monitor micro-level fraud patterns (e.g., spikes in transaction traffic or rapidly changing accounts associated with a single IP address) and use that to flag potential fraudulent activity within a larger macro-level fraud graph stored in Neptune. Neptune's strength is seeing fraud within the macro environment, but not in specific windows of time. Therefore these services should complement each other in a measurable way (not yet proven). This guidance will show how to use these technologies together for fraud detection, but the same pattern can be applied to other use cases where time sensitive micro-indicators and context sensitive macro-level indicators can both be used, such as Customer Data Platforms, trading risk platforms, etc. 
+This solution will demonstrate the use of **Amazon Timestream** to monitor micro-level
+fraud patterns (e.g., spikes in transaction traffic or rapidly changing accounts
+associated with a single IP address) and use that to flag potential fraudulent 
+activity within a larger macro-level fraud graph stored in Neptune. **Amazon Neptune**'s strength is seeing fraud within the macro environment, but not in specific windows of time. Therefore these services should complement each other in a measurable way (not yet proven). This guidance will show how to use these technologies together for fraud detection, but the same pattern can be applied to other use cases where time sensitive micro-indicators and context sensitive macro-level indicators can both be used, such as Customer Data Platforms, trading risk platforms, etc. 
 
 ### Reference architecture
 
@@ -25,7 +28,7 @@ This solution will demonstrate the use of Timestream to monitor micro-level frau
 
 _You are responsible for the cost of the AWS services used while running this Guidance. 
 As of August 2024, the cost for running this Guidance with the default settings in the 
-AWS Region US East (N. Virginia) is approximately $800.00._
+AWS Region US East (N. Virginia) is approximately $800.00 per month._
 
 _We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this Guidance._
 
@@ -44,8 +47,11 @@ The following table provides a sample cost breakdown for deploying this Guidance
 
 ### Operating System
 
-The deployed solution is serverless. Deployed resources itself do not have particular Operating System (OS) requirements. However to build the solution,
-deploying the solution and running a transaction simulation the provided shell scripts and python programs need a local environment with the following requirementsL: 
+The deployed solution is serverless. Deployed resources itself do not have particular Operating System (OS) requirements.
+However to build the solution,
+deploying the solution and running a transaction simulation the provided shell
+scripts and python programs need a local environment with the
+following requirements: 
 
 | Step                         | Environment  | Requirements                                    |
 |------------------------------|--------------|-------------------------------------------------|
@@ -76,15 +82,15 @@ The solution can be deployed in the following regions:
 
 ## Deployment Steps
 
-1. Clone the repo using command
+1. Clone the guidance-for-transactional-fraud-detection-on-aws repository using command
 ```
 git clone git@github.com:aws-solutions-library-samples/guidance-for-transactional-fraud-detection-on-aws.git
 ```
-2. cd to the repo folder <br/>
+2. Navigate into the guidance-for-transactional-fraud-detection-on-aws repository folder <br/>
 ```
 cd aws-solutions-library-samples/guidance-for-transactional-fraud-detection-on-aws
 ```
-3. create S3 bucket to be used for solution
+3. Create **Amazon S3** bucket to be used for solution
 ```
 export S3BucketName="riskandfraud-$RANDOM"
 aws s3api create-bucket --bucket $S3BucketName --region us-east-1
@@ -93,7 +99,7 @@ aws s3api create-bucket --bucket $S3BucketName --region us-east-1
 ```
 ./deployment/setup.sh $S3BucketName
 ```
-5. Deploy solution using CloudFormation, replace values for region, vpc, subnets and S3 as per your environment
+5. Deploy solution using **AWS CloudFormation**, replace values for region, vpc, subnets and S3 as per your environment
 ```
 export region=<AWSRegion>
 export stack_name="nt-full-$(date +"%d-%s-%h")"
@@ -110,7 +116,7 @@ aws cloudformation create-stack --stack-name $stack_name --template-url \
 ```
 ## Deployment Validation
 
-Make note of the stack id, it takes arround 35 min for the template to run complete. You can monitor the stack progress in Cloudformation console.
+Make note of the stack id, it takes around 35 min for the template to run complete. You can monitor the stack progress in Cloudformation console.
 
 Sample output:
 
@@ -119,10 +125,14 @@ Sample output:
     "StackId": "arn:aws:cloudformation:us-east-1:461115064720:stack/nt-full-25-1695636313-Sep/06a59240-5b8b-11ee-b3ed-0ec66bc9c473"
 }
 ```
-## Running the Guidance (required)
+## Running the Guidance
 
 1. Run producer
-Once the CloudFormation template is deployed, you can putting some test data to verify the solution. Change the Kinesis stream name as per the CloudFormation output
+
+Once the CloudFormation template is deployed, you can send test data into the Kinesis Stream, to verify the solution.
+Change the Kinesis stream name as per the CloudFormation output or resource tab:
+![](./assets/kinesis_stream_o.png)
+![](./assets/kinesis_stream_r.png)
 
 Run following command 
 
@@ -138,11 +148,11 @@ Refer the notebook created
 
 ![](./assets/NotebookOutput.png)
 
-Upload the [ipython notebook](./source/notebooks/NT-FraudAndRisk.ipynb)  to Neptune Notebook created. Execute the cells to analyse the data.
+Upload the [NT-FraudAndRisk.ipynb](./source/notebooks/NT-FraudAndRisk.ipynb) Jupyter Notebook to Neptune Notebook instance created. Execute the cells to analyse the data.
 
 ![](./assets/NotebookExample.png)
 
-The execution above assumed tha fraudulent transaction was with account "123-5678-22". In the following steps we will show how Amazon Timestream can be used to identify the fraudulant accounts:
+The execution above assumed tha fraudulent transaction was with account "123-5678-22". In the following steps we will show how Amazon Timestream can be used to identify the fraudulent accounts:
 
 3. Verify data ingested in Timestream
 
@@ -159,14 +169,18 @@ This query can be generated by using the preview data feature:
 ![](./assets/verify_timestream_transactions.png)
 4. Scheduled Queries executions
 
-Every 5 minutes a scheduled Timestream query is executed to identify high value transactions or frequent transactions as potential fraudulent activity:
+For calculating and identifying abnormal transactions the solutions uses the
+scheduled query feature in Amazon Timestream. Every 5 minutes two queries 
+are executed to identify high value transactions or frequent transactions as potential fraudulent activity:
 ![](./assets/ScheduledQuery.png)
 
-The results can be queried after waiting at least 5 minutes by querying the associated tables. Please note, to see all activities, the time filter in WHERE clause is removed here:
+The results can be viewed after waiting at least 5 minutes by querying the associated target tables. Please note, to see all activities, the time filter in WHERE clause is removed here:
 
 ![](./assets/HighValueAggregation.png)
 
 ![](./assets/FrequentAggregation.png)
+
+<!--
 
 5. Optional: Verify the solution [Quicksight dashboard]
 
@@ -179,11 +193,14 @@ Once the CloudFormation template is deployed, setup the quicksight dashboard. Fo
 
 Refer the blog https://aws.amazon.com/blogs/database/build-interactive-graph-data-analytics-and-visualizations-using-amazon-neptune-amazon-athena-federated-query-and-amazon-quicksight/  on how to setup a QuickSight Analysis Dashboard. 
 
+-->
 
 ## Next Steps
 
 - Integrate transaction stream into your existing transaction stream
 - Evaluate criteria for additional fraud use cases
+- you can visualize graph and Timestream data with the tool of your choice. Common options are **Amazon QuickSight, GraphExplorer, Grafana**
+
 
 ## Cleanup
 
