@@ -30,13 +30,13 @@ def create_accounts_merchants():
     while counter < 100:
         
         account = {
-            "email": f"email-{random.randint(1,99)}@ntdemo.com",
+            "email": f"email-{random.randint(1,99)}@example-anycompany.com",
             "phone": f"123456{random.randint(1,99)}",
             "accountid": f"1234-5678-{counter}"
         }
 
         if counter >= 20 and counter < 31:
-            account["email"] =  "shared@ntdemo.com"
+            account["email"] =  "shared@example-anycompany.com"
             account["phone"] =  "10001000"
         
         accounts.append(account)
@@ -47,7 +47,7 @@ def create_accounts_merchants():
     merchants = []
     while counter < 1020:
         merchant = {
-            "email": f"email-{random.randint(1000,1020)}@ntdemo.com",
+            "email": f"email-{random.randint(1000,1020)}@example-anycompany.com",
             "phone": f"123456{random.randint(1000,1020)}",
             "merchantaccountid": f"1234-5678-{counter}"
         }
