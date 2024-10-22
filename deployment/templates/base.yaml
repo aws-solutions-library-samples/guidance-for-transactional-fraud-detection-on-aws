@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  Base template for Solution Guidance (Transaction fraud)
+  Base template for Solution Guidance (Transaction fraud SO9542 ) 
 Globals:
   Function:
     Timeout: 20
